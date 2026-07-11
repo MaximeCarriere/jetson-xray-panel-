@@ -44,9 +44,11 @@ def eval_engine(engine_path: str, n: int = 2000) -> float:
     dt = time.perf_counter() - t0
 
     auc, k = cl.macro_auroc(labels, preds)
-    print(f"{engine_path.split('/')[-1]:28s} macro-AUROC {auc:.4f} "
-          f"({k} labels, {n} imgs, {n/dt:.0f} img/s)")
-    return auc
+    from stats import bootstrap_auroc
+    bs = bootstrap_auroc(labels, preds, cl.macro_auroc)
+    print(f"{engine_path.split('/')[-1]:28s} macro-AUROC {auc:.4f} ± {bs['se']:.4f} "
+          f"(95% CI [{bs['ci95'][0]:.4f}, {bs['ci95'][1]:.4f}], {k} labels, {n} imgs, {n/dt:.0f} img/s)")
+    return {"auroc": auc, "se": bs["se"], "ci95": bs["ci95"]}
 
 
 if __name__ == "__main__":

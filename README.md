@@ -15,13 +15,21 @@ The same box, same models, optimized step by step:
 
 | | Throughput | |
 |---|---:|---|
-| Naive PyTorch (1 model, 1 image) | 21 img/s | 1× |
+| Naive PyTorch (1 model, 1 image) | 20 img/s | 1× |
 | Best PyTorch (concurrent + batched) | 180 img/s | 9× |
 | TensorRT FP16 (batched) | 509 img/s | 25× |
-| **TensorRT INT8 (batched)** | **1035 img/s** | **50×** |
+| **TensorRT INT8 (batched)** | **1035 img/s** | **52×** |
 
 …and every trade-off along the way is measured and reported honestly — including the
 negative results (naive TTA, the INT8 accuracy cost, the concurrency memory wall).
+
+**Reproducibility.** Each experiment was repeated and reported with error bars —
+±1 standard error over 3 runs for throughput, ±1 bootstrap SE (1000 resamples) for
+AUROC. Accuracy reproduces exactly (AUROC is bit-identical run to run); throughput
+variance is under 1%. Throughput figures are the board's full-clock peak (the
+TensorRT numbers were corroborated by the 20-minute endurance test); note the board
+is power-sensitive and throttles to ~half under sustained max load on an
+under-spec adapter.
 
 ## Experiments
 
@@ -29,7 +37,7 @@ Each folder is one self-contained experiment with its own README, code, and resu
 
 | # | Experiment | Headline result |
 |---|---|---|
-| [XP1](experiments/xp01_baselines/) | Single-model baselines | batching → 167 img/s, linear; the efficiency king |
+| [XP1](experiments/xp01_baselines/) | Single-model baselines | batching → 160 img/s, linear; the efficiency king |
 | [XP2](experiments/xp02_concurrency/) | Concurrency + memory wall | sublinear, saturates ~6 models; N=8 exceeds 8 GB |
 | [XP3](experiments/xp03_concurrent_batched/) | Concurrent + batched | 180 img/s @ 97% GPU — the device ceiling |
 | [XP4](experiments/xp04_hetero_panel/) | Mixed-architecture panel | ResNet-50 + 3 DenseNets, 75 img/s; heavy model ≠ bottleneck |

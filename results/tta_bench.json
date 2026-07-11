@@ -1,8 +1,19 @@
 {
-  "_note": "TTA / ensemble robustness on ChestMNIST-224 (NIH ChestX-ray14, 2000 labeled test images) with densenet121-res224-nih. macro-AUROC over 14 pathologies. Systems cost measured by running the views as one batch (spare-capacity 'free' robustness). Augmentations: mild rotation/contrast/brightness, no h-flip.",
   "n_images": 2000,
   "views": 5,
   "ensemble_models": 3,
-  "auroc": {"single": 0.7405, "tta_5views": 0.7375, "ensemble_3models": 0.7621},
-  "latency_ms": {"single": 49.0, "tta_5views_one_batch": 49.2}
+  "auroc": {
+    "single": 0.7405,
+    "tta_5views": 0.7375,
+    "ensemble_3models": 0.7621
+  },
+  "auroc_se": {
+    "single": 0.0134,
+    "tta_5views": 0.0135,
+    "ensemble_3models": 0.0137
+  },
+  "latency_ms": {
+    "single": 61.3,
+    "tta_5views_one_batch": 50.6
+  }
 }

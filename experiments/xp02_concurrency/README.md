@@ -4,11 +4,12 @@ Run **N models at once**, one process each, under CUDA MPS. This is the heart of
 the project: a multi-disease *panel* uses different models that can't be batched
 together, so concurrency is the only way to serve them at once.
 
-## Result
+## Result (mean over 3 runs, ±1 SE)
 | N concurrent | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 |---|---|---|---|---|---|---|---|---|
-| img/s | 20.7 | 39.8 | 56.6 | 73.5 | 88 | **100** | 99.3 | ✗ |
-| latency ms | 49 | 50 | 53 | 55 | 57 | 60 | **71** | — |
+| img/s | 19.9 | 39.4 | 57.3 | 73.8 | 89.3 | **101.0** | 100.4 | ✗ |
+| ±SE | 0.0 | 0.1 | 0.4 | 0.4 | 0.4 | 0.3 | 0.1 | — |
+| latency ms | 50 | 50 | 53 | 54 | 56 | 60 | **71** | — |
 
 - Real but **sublinear**; **saturates at N≈6** (~100 img/s, 5×). N=7 adds latency, no gain.
 - **N=8 hits a memory wall** — 8 per-process CUDA contexts (~1 GB each) exceed the

@@ -117,10 +117,18 @@ def main():
     ensemble = np.where(ens_cnt > 0, ens_acc / np.maximum(ens_cnt, 1), np.nan)
     auc_ens, _ = macro_auroc(labels, ensemble)
 
+    # Bootstrap the AUROC over the test set for an honest error bar (the model is
+    # deterministic, so re-running is identical — uncertainty is sampling, not runs).
+    from stats import bootstrap_auroc
+    import json
+    bs_single = bootstrap_auroc(labels, single, macro_auroc)
+    bs_tta = bootstrap_auroc(labels, tta, macro_auroc)
+    bs_ens = bootstrap_auroc(labels, ensemble, macro_auroc)
+
     print(f"\n=== Robustness (macro-AUROC over {k} pathologies, {len(imgs)} images) ===")
-    print(f"  single-pass          : {auc_single:.4f}")
-    print(f"  TTA ({len(views)} views)         : {auc_tta:.4f}  ({auc_tta-auc_single:+.4f})")
-    print(f"  ensemble ({len(ens_models)} models)   : {auc_ens:.4f}  ({auc_ens-auc_single:+.4f})")
+    print(f"  single-pass          : {auc_single:.4f} ± {bs_single['se']:.4f}")
+    print(f"  TTA ({len(views)} views)         : {auc_tta:.4f} ± {bs_tta['se']:.4f}  ({auc_tta-auc_single:+.4f})")
+    print(f"  ensemble ({len(ens_models)} models)   : {auc_ens:.4f} ± {bs_ens['se']:.4f}  ({auc_ens-auc_single:+.4f})")
 
     # 4) systems cost — TTA views as ONE batch cost ~the same as one image
     #    (batching fills spare capacity), so robustness is nearly free.
@@ -139,11 +147,11 @@ def main():
 
     def single_fn():
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
-            nih(_xrv_normalize(one))
+            nih(xrv_normalize(one))
 
     def tta_fn():
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
-            nih(_xrv_normalize(kviews))
+            nih(xrv_normalize(kviews))
 
     t_single = _time(single_fn)
     t_tta = _time(tta_fn)
@@ -151,6 +159,18 @@ def main():
     print(f"  single pass         : {t_single:.1f} ms")
     print(f"  TTA {len(views)} views (1 batch): {t_tta:.1f} ms  "
           f"({t_tta/t_single:.2f}x latency for {len(views)}x the passes)")
+
+    with open("/home/a/jetson-xray-panel/results/tta_bench.json", "w") as f:
+        json.dump({"n_images": len(imgs), "views": len(views),
+                   "ensemble_models": len(ens_models),
+                   "auroc": {"single": round(auc_single, 4), "tta_5views": round(auc_tta, 4),
+                             "ensemble_3models": round(auc_ens, 4)},
+                   "auroc_se": {"single": round(bs_single["se"], 4),
+                                "tta_5views": round(bs_tta["se"], 4),
+                                "ensemble_3models": round(bs_ens["se"], 4)},
+                   "latency_ms": {"single": round(t_single, 1),
+                                  "tta_5views_one_batch": round(t_tta, 1)}}, f, indent=2)
+    print("wrote results/tta_bench.json")
 
 
 if __name__ == "__main__":

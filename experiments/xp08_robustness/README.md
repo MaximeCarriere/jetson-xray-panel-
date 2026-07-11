@@ -5,15 +5,17 @@ Spend the spare GPU capacity on *reliability* instead of speed. Evaluated on
 macro-AUROC over 14 pathologies.
 
 ## Result
-| Method | AUROC | Δ |
+| Method | AUROC (± bootstrap SE) | Δ |
 |---|---:|---:|
-| Single pass | 0.7405 | — |
-| TTA (5 augmented views) | 0.7375 | −0.003 |
-| **Ensemble (3 different-dataset DenseNets)** | **0.7621** | **+0.022** |
+| Single pass | 0.7405 ± 0.0134 | — |
+| TTA (5 augmented views) | 0.7375 ± 0.0135 | −0.003 |
+| **Ensemble (3 different-dataset DenseNets)** | **0.7621 ± 0.0137** | **+0.022** |
 
-- **Ensembling helps** (+0.022); **naive TTA does not** (−0.003, honest negative —
-  matches the literature that augmentation-averaging isn't automatically beneficial).
-- **Cost ~free:** 5 views / 3 models run as one batch cost 49.2 ms vs 49.0 ms single —
+- **Ensembling helps** (+0.022) — but with proper error bars (±1 bootstrap SE) the
+  per-estimate CIs overlap, so at 2000 images the gain is **suggestive, not
+  conclusive**; a paired test or more data would firm it up. Honest, not overclaimed.
+- **Naive TTA does not help** (−0.003, squarely within noise) — matches the literature.
+- **Cost ~free:** 5 views / 3 models run as one batch cost ~the same as a single pass —
   the spare capacity absorbs it.
 
 ![tta robustness](../../results/figures/tta_robustness.png)

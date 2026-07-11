@@ -69,14 +69,30 @@ def run_streams(model_names: list[str], duration: float = 8.0, warmup: int = 15,
 
 
 if __name__ == "__main__":
+    import json
+    from stats import agg
+
     ns = [int(x) for x in sys.argv[1:]] or [2, 4, 6, 8, 10, 12]
+    REPEATS = 3
     workhorse = "densenet121-res224-all"
-    print(f"{'N':>3}  {'img/s':>8}  {'round ms':>9}  {'peak MB':>8}")
+    rows = []
+    print(f"{'N':>3}  {'img/s (mean±SE)':>18}  {'round ms':>9}  {'peak MB':>8}")
     for n in ns:
         try:
-            r = run_streams([workhorse] * n, duration=6.0)
-            print(f"{n:>3}  {r['throughput_ips']:>8.1f}  "
-                  f"{r['round_latency_ms_mean']:>9.1f}  {r['mem_mb_peak']:>8.0f}")
+            ips, lat, mem = [], [], []
+            for _ in range(REPEATS):
+                r = run_streams([workhorse] * n, duration=6.0)
+                ips.append(r["throughput_ips"]); lat.append(r["round_latency_ms_mean"])
+                mem.append(r["mem_mb_peak"])
+            a = agg(ips)
+            rows.append({"n": n, "ips_mean": round(a["mean"], 1), "ips_se": round(a["se"], 2),
+                         "round_ms": round(sum(lat) / len(lat), 1),
+                         "mem_mb": round(sum(mem) / len(mem))})
+            print(f"{n:>3}  {a['mean']:>11.1f} ± {a['se']:<4.2f}  "
+                  f"{rows[-1]['round_ms']:>9.1f}  {rows[-1]['mem_mb']:>8}")
         except Exception as e:
             print(f"{n:>3}  FAILED: {type(e).__name__}: {e}")
             break
+    with open("/home/a/jetson-xray-panel/results/streams_bench.json", "w") as f:
+        json.dump({"repeats": REPEATS, "rows": rows}, f, indent=2)
+    print("wrote results/streams_bench.json")

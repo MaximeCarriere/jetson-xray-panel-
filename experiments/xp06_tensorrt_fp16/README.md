@@ -12,8 +12,9 @@ for this exact chip — *not* INT8, so accuracy is preserved).
 | **TensorRT FP16, batched ×8** | **509 img/s** | **25×** |
 
 - **Accuracy preserved:** FP16 vs PyTorch FP32 pathology probabilities agree to
-  within **0.86 pp** (measured on ChestMNIST — see `trt_eval_auroc.py`; FP16 AUROC
-  0.7405 = PyTorch 0.7405).
+  within **0.86 pp**; re-verified macro-AUROC on 2000 labeled ChestMNIST images is
+  **0.7405 ± 0.0134** (1000-sample bootstrap SE) — identical to PyTorch FP32. See
+  `trt_eval_auroc.py`.
 - **TRT engines overlap in-process** (252→460 img/s, K=1..8) where CUDA streams did
   not, with no memory wall — one execute call per model, not 200 GIL-serialized kernels.
 

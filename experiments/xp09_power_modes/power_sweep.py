@@ -51,24 +51,35 @@ def _bench(model: TRTModel, batch=8, duration=6.0, warmup=20):
 
 def main():
     engine = sys.argv[1] if len(sys.argv) > 1 else "/home/a/densenet_nih_fp16.engine"
+    from stats import agg
+
+    REPEATS = 3
     model = TRTModel(engine)                 # loaded once; reused across modes
     rows = []
     try:
         for m, name in MODES:
             _set_mode(m)
-            ips, pw = _bench(model)
-            watt = pw["power_w"]["mean"]
-            row = {"mode": name, "nvpmodel": m, "throughput_ips": round(ips, 1),
-                   "power_w": watt, "throughput_per_watt": round(ips / watt, 2),
-                   "temp_c_peak": pw["temp_c_peak"]}
+            ips_s, pw_s, eff_s, temp_s = [], [], [], []
+            for _ in range(REPEATS):
+                ips, pw = _bench(model)
+                watt = pw["power_w"]["mean"]
+                ips_s.append(ips); pw_s.append(watt); eff_s.append(ips / watt)
+                temp_s.append(pw["temp_c_peak"])
+            ai, ap, ae = agg(ips_s), agg(pw_s), agg(eff_s)
+            row = {"mode": name, "nvpmodel": m,
+                   "throughput_ips": round(ai["mean"], 1), "throughput_se": round(ai["se"], 2),
+                   "power_w": round(ap["mean"], 2),
+                   "throughput_per_watt": round(ae["mean"], 2), "eff_se": round(ae["se"], 3),
+                   "temp_c_peak": max(temp_s)}
             rows.append(row)
-            print(f"  {name:12s} {ips:7.1f} img/s | {watt:5.1f} W | "
-                  f"{ips/watt:6.2f} img/s/W | {pw['temp_c_peak']:.0f}C")
+            print(f"  {name:12s} {ai['mean']:7.1f}±{ai['se']:.1f} img/s | {ap['mean']:5.1f} W | "
+                  f"{ae['mean']:6.2f}±{ae['se']:.2f} img/s/W | {max(temp_s):.0f}C")
     finally:
         _set_mode(2)                          # always restore MAXN_SUPER
         print("  restored MAXN_SUPER")
     with open(RESULTS, "w") as f:
-        json.dump({"engine": engine.split("/")[-1], "batch": 8, "rows": rows}, f, indent=2)
+        json.dump({"engine": engine.split("/")[-1], "batch": 8, "repeats": REPEATS,
+                   "rows": rows}, f, indent=2)
     print(f"wrote {RESULTS}")
 
 

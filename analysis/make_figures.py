@@ -43,6 +43,8 @@ def _by_config(recs: list[dict]) -> dict[str, dict]:
         groups[r["config"]].append(r)
 
     def agg(rs, path):
+        # Returns (mean, standard_error). Error bars in every figure are ±1 SE
+        # across the repeated runs (SE = sample_std / sqrt(n)).
         vals = []
         for r in rs:
             v = r
@@ -51,7 +53,10 @@ def _by_config(recs: list[dict]) -> dict[str, dict]:
             if v is not None:
                 vals.append(v)
         a = np.asarray(vals, dtype=float)
-        return (float(a.mean()), float(a.std())) if len(a) else (np.nan, 0.0)
+        if len(a) == 0:
+            return (np.nan, 0.0)
+        se = float(a.std(ddof=1) / np.sqrt(len(a))) if len(a) > 1 else 0.0
+        return (float(a.mean()), se)
 
     out = {}
     for cfg, rs in groups.items():
@@ -404,6 +409,44 @@ def fig_endurance() -> None:
     print(f"wrote {out}")
 
 
+def fig_streams() -> None:
+    """CUDA streams: throughput stays flat (serialized) while memory scales fine."""
+    path = os.path.join(REPO, "results", "streams_bench.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        rows = json.load(f)["rows"]
+    ns = [r["n"] for r in rows]
+    ips = [r["ips_mean"] for r in rows]
+    ips_se = [r.get("ips_se", 0.0) for r in rows]
+    mem = [r["mem_mb"] for r in rows]
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.4), facecolor=SURFACE)
+    _style(a1)
+    a1.errorbar(ns, ips, yerr=ips_se, color=AQUA, linewidth=2, marker="o",
+                markersize=6, capsize=3, zorder=3)
+    a1.set_ylim(0, max(ips) * 1.8)
+    a1.set_ylabel("images / second", color=INK2, fontsize=10)
+    a1.set_xlabel("# models (one process, one stream each)", color=INK2, fontsize=10)
+    a1.set_title("Throughput — flat (serialized)", color=INK, fontsize=12,
+                 fontweight="bold", loc="left")
+    _style(a2)
+    a2.plot(ns, mem, color=BLUE, linewidth=2, marker="o", markersize=6, zorder=3)
+    a2.set_ylim(0, max(mem) * 1.2)
+    a2.set_ylabel("peak GPU memory (MB)", color=INK2, fontsize=10)
+    a2.set_xlabel("# models", color=INK2, fontsize=10)
+    a2.set_title("Memory — scales fine (one context)", color=INK, fontsize=12,
+                 fontweight="bold", loc="left")
+    fig.suptitle("CUDA streams break the memory wall but not throughput "
+                 "(GIL-serialized, batch-1 launch-bound)", color=INK, fontsize=12,
+                 fontweight="bold", x=0.02, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    out = os.path.join(FIG, "streams.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    print(f"wrote {out}")
+
+
 def fig_power_modes() -> None:
     """Throughput and efficiency across power modes (find the sweet spot)."""
     path = os.path.join(REPO, "results", "power_sweep.json")
@@ -417,18 +460,20 @@ def fig_power_modes() -> None:
     x = np.arange(len(rows))
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.4), facecolor=SURFACE)
-    for ax, key, ylab, color, title in [
-        (a1, "throughput_ips", "images / second", BLUE, "Throughput"),
-        (a2, "throughput_per_watt", "images / second / watt", AQUA, "Efficiency  (higher = better)"),
+    for ax, key, sekey, ylab, color, title in [
+        (a1, "throughput_ips", "throughput_se", "images / second", BLUE, "Throughput"),
+        (a2, "throughput_per_watt", "eff_se", "images / second / watt", AQUA, "Efficiency  (higher = better)"),
     ]:
         _style(ax)
         vals = [r[key] for r in rows]
-        bars = ax.bar(x, vals, color=color, width=0.6, zorder=3)
+        ses = [r.get(sekey, 0.0) for r in rows]
+        bars = ax.bar(x, vals, color=color, width=0.6, zorder=3,
+                      yerr=ses, ecolor=INK, capsize=4, error_kw={"zorder": 4})
         best = int(np.argmax(vals))
         bars[best].set_color(YELLOW)          # highlight the winner
-        for xi, v in zip(x, vals):
+        for xi, v, s in zip(x, vals, ses):
             ax.annotate(f"{v:.0f}" if key == "throughput_ips" else f"{v:.1f}",
-                        (xi, v), textcoords="offset points", xytext=(0, 5),
+                        (xi, v + s), textcoords="offset points", xytext=(0, 5),
                         ha="center", color=INK, fontsize=10, fontweight="bold")
         ax.set_xticks(x)
         ax.set_xticklabels(names, color=INK, fontsize=10)
@@ -455,11 +500,14 @@ def fig_int8() -> None:
     if "int8" not in t:
         return
     i8 = t["int8"]
+    ase, bse = i8.get("auroc_se", {}), i8.get("batched8_se", {})
     pts = [
         ("PyTorch (batched)", t["pytorch_reference_ips"]["batched8"],
-         i8["auroc"]["pytorch_fp32"], INK2),
-        ("TensorRT FP16", i8["batched8_ips"]["trt_fp16"], i8["auroc"]["trt_fp16"], BLUE),
-        ("TensorRT INT8", i8["batched8_ips"]["trt_int8"], i8["auroc"]["trt_int8"], RED),
+         i8["auroc"]["pytorch_fp32"], INK2, 0.0, ase.get("pytorch_fp32", 0.0)),
+        ("TensorRT FP16", i8["batched8_ips"]["trt_fp16"], i8["auroc"]["trt_fp16"],
+         BLUE, bse.get("trt_fp16", 0.0), ase.get("trt_fp16", 0.0)),
+        ("TensorRT INT8", i8["batched8_ips"]["trt_int8"], i8["auroc"]["trt_int8"],
+         RED, bse.get("trt_int8", 0.0), ase.get("trt_int8", 0.0)),
     ]
     fig, ax = plt.subplots(figsize=(8.5, 5.2), facecolor=SURFACE)
     _style(ax)
@@ -467,8 +515,9 @@ def fig_int8() -> None:
     ys = [p[2] for p in pts]
     ax.plot(xs, ys, color=INK2, linewidth=1.2, linestyle="--", zorder=2)
     offsets = [(-6, 12), (10, 10), (12, -4)]   # stagger so labels don't collide
-    for (label, x, y, c), off in zip(pts, offsets):
-        ax.scatter([x], [y], s=140, color=c, zorder=4, edgecolor=SURFACE, linewidth=1.5)
+    for (label, x, y, c, xe, ye), off in zip(pts, offsets):
+        ax.errorbar([x], [y], xerr=[xe], yerr=[ye], fmt="o", color=c, markersize=11,
+                    zorder=4, ecolor=c, capsize=4, markeredgecolor=SURFACE, markeredgewidth=1.5)
         ax.annotate(f"{label}\n{x:.0f} img/s · AUROC {y:.3f}", (x, y),
                     textcoords="offset points", xytext=off, color=INK, fontsize=9.5)
     ax.set_xlabel("throughput — images / second (batch 8)  →  faster", color=INK2, fontsize=10)
@@ -495,36 +544,35 @@ def fig_tta() -> None:
     with open(path) as f:
         t = json.load(f)
     a = t["auroc"]
-    rows = [
-        ("Single pass", a["single"], INK2),
-        (f"TTA ({t['views']} views)", a["tta_5views"], YELLOW),
-        (f"Ensemble ({t['ensemble_models']} models)", a["ensemble_3models"], AQUA),
-    ]
-    labels = [r[0] for r in rows]
-    vals = [r[1] for r in rows]
-    colors = [r[2] for r in rows]
-    x = np.arange(len(rows))
+    se = t.get("auroc_se", {})
+    keys = ["single", "tta_5views", "ensemble_3models"]
+    labels = ["Single pass", f"TTA ({t['views']} views)", f"Ensemble ({t['ensemble_models']} models)"]
+    colors = [INK2, YELLOW, AQUA]
+    vals = [a[k] for k in keys]
+    ses = [se.get(k, 0.0) for k in keys]
+    x = np.arange(len(keys))
     base = a["single"]
 
     fig, ax = plt.subplots(figsize=(8, 5), facecolor=SURFACE)
     _style(ax)
-    ax.bar(x, vals, color=colors, width=0.6, zorder=3)
+    ax.bar(x, vals, color=colors, width=0.6, zorder=3,
+           yerr=ses, ecolor=INK, capsize=5, error_kw={"zorder": 4, "linewidth": 1.3})
     ax.axhline(base, color=INK2, linestyle="--", linewidth=1, zorder=2)
-    for xi, v in zip(x, vals):
-        ax.annotate(f"{v:.3f}\n({v-base:+.3f})", (xi, v), textcoords="offset points",
-                    xytext=(0, 6), ha="center", color=INK, fontsize=10, fontweight="bold")
+    for xi, v, s in zip(x, vals, ses):
+        ax.annotate(f"{v:.3f}±{s:.3f}\n({v-base:+.3f})", (xi, v + s),
+                    textcoords="offset points", xytext=(0, 6), ha="center",
+                    color=INK, fontsize=9.5, fontweight="bold")
     ax.set_xticks(x)
     ax.set_xticklabels(labels, color=INK, fontsize=10)
-    # AUROC differences are small; zoom the y-axis so they're visible.
-    lo = min(vals) - 0.01
-    ax.set_ylim(lo, max(vals) + 0.012)
+    lo = min(v - s for v, s in zip(vals, ses)) - 0.006
+    ax.set_ylim(lo, max(v + s for v, s in zip(vals, ses)) + 0.018)
     ax.set_ylabel("macro-AUROC over 14 pathologies", color=INK2, fontsize=10)
     ax.set_title("Spending spare capacity on robustness (ChestMNIST, 2000 images)",
                  color=INK, fontsize=12.5, fontweight="bold", loc="left")
     lat = t["latency_ms"]
-    ax.annotate(f"cost is ~free: {t['views']} views run as one batch = "
-                f"{lat['tta_5views_one_batch']:.0f} ms vs {lat['single']:.0f} ms single "
-                f"— ensembling adds +{a['ensemble_3models']-base:.3f} AUROC; naive TTA does not help",
+    ax.annotate(f"error bars = ±1 bootstrap SE. Cost ~free: {t['views']} views as one batch = "
+                f"{lat['tta_5views_one_batch']:.0f} ms vs {lat['single']:.0f} ms — "
+                f"ensemble +{a['ensemble_3models']-base:.3f} AUROC; naive TTA does not help",
                 (0.0, -0.14), xycoords="axes fraction", color=INK2, fontsize=8.5)
     fig.tight_layout()
     out = os.path.join(FIG, "tta_robustness.png")
@@ -591,6 +639,7 @@ def main() -> None:
     fig_regime_peak(cfg)
     fig_trt(cfg)
     fig_int8()
+    fig_streams()
     fig_power_modes()
     fig_endurance()
     fig_tta()

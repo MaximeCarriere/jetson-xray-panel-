@@ -3,15 +3,17 @@
 Can we break XP2's memory wall by running all N models in **one process, one CUDA
 context, one stream each**? Test result: it fixes memory but not throughput.
 
-## Result
+## Result (mean ± SE over 3 runs)
 | N models | throughput | round latency | peak memory |
 |---:|---:|---:|---:|
-| 2 | 20 img/s | 99 ms | 93 MB |
-| 8 | 20 img/s | 400 ms | 446 MB |
-| 12 | 20 img/s | 604 ms | **680 MB** |
+| 2 | 15.9 ± 0.1 img/s | 126 ms | 112 MB |
+| 8 | 19.4 ± 0.1 img/s | 413 ms | 560 MB |
+| 12 | 18.3 ± 1.2 img/s | 661 ms | **680 MB** |
+
+![streams](../../results/figures/streams.png)
 
 - ✅ **Memory wall gone** — 12 models in 680 MB (one context).
-- ❌ **No throughput gain** — pinned at the single-model rate (~20 img/s) for any N;
+- ❌ **No throughput gain** — pinned at the single-model rate (~16–19 img/s) for any N;
   the models run **serially**. They are batch-1, launch-bound, and Python's GIL issues
   one model's kernels fully before the next, so nothing overlaps.
 

@@ -1,0 +1,47 @@
+{
+  "repeats": 3,
+  "rows": [
+    {
+      "n": 2,
+      "ips_mean": 15.9,
+      "ips_se": 0.11,
+      "round_ms": 125.5,
+      "mem_mb": 112
+    },
+    {
+      "n": 4,
+      "ips_mean": 17.3,
+      "ips_se": 1.18,
+      "round_ms": 233.6,
+      "mem_mb": 268
+    },
+    {
+      "n": 6,
+      "ips_mean": 18.7,
+      "ips_se": 0.92,
+      "round_ms": 322.8,
+      "mem_mb": 468
+    },
+    {
+      "n": 8,
+      "ips_mean": 19.4,
+      "ips_se": 0.07,
+      "round_ms": 413.0,
+      "mem_mb": 560
+    },
+    {
+      "n": 10,
+      "ips_mean": 19.4,
+      "ips_se": 0.06,
+      "round_ms": 514.3,
+      "mem_mb": 619
+    },
+    {
+      "n": 12,
+      "ips_mean": 18.3,
+      "ips_se": 1.15,
+      "round_ms": 661.2,
+      "mem_mb": 680
+    }
+  ]
+}
