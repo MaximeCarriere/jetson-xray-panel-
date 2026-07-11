@@ -1,0 +1,30 @@
+{
+  "engine": "densenet_nih_fp16.engine",
+  "batch": 8,
+  "rows": [
+    {
+      "mode": "MAXN_SUPER",
+      "nvpmodel": 2,
+      "throughput_ips": 508.2,
+      "power_w": 17.069,
+      "throughput_per_watt": 29.77,
+      "temp_c_peak": 58.468
+    },
+    {
+      "mode": "25W",
+      "nvpmodel": 1,
+      "throughput_ips": 459.3,
+      "power_w": 15.276,
+      "throughput_per_watt": 30.07,
+      "temp_c_peak": 58.562
+    },
+    {
+      "mode": "15W",
+      "nvpmodel": 0,
+      "throughput_ips": 315.9,
+      "power_w": 12.042,
+      "throughput_per_watt": 26.23,
+      "temp_c_peak": 57.75
+    }
+  ]
+}

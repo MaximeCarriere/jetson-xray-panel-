@@ -369,6 +369,47 @@ def fig_trt(cfg: dict) -> None:
     print(f"wrote {out}")
 
 
+def fig_power_modes() -> None:
+    """Throughput and efficiency across power modes (find the sweet spot)."""
+    path = os.path.join(REPO, "results", "power_sweep.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        rows = json.load(f)["rows"]
+    order = ["15W", "25W", "MAXN_SUPER"]
+    rows = sorted(rows, key=lambda r: order.index(r["mode"]))
+    names = [r["mode"] for r in rows]
+    x = np.arange(len(rows))
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.4), facecolor=SURFACE)
+    for ax, key, ylab, color, title in [
+        (a1, "throughput_ips", "images / second", BLUE, "Throughput"),
+        (a2, "throughput_per_watt", "images / second / watt", AQUA, "Efficiency  (higher = better)"),
+    ]:
+        _style(ax)
+        vals = [r[key] for r in rows]
+        bars = ax.bar(x, vals, color=color, width=0.6, zorder=3)
+        best = int(np.argmax(vals))
+        bars[best].set_color(YELLOW)          # highlight the winner
+        for xi, v in zip(x, vals):
+            ax.annotate(f"{v:.0f}" if key == "throughput_ips" else f"{v:.1f}",
+                        (xi, v), textcoords="offset points", xytext=(0, 5),
+                        ha="center", color=INK, fontsize=10, fontweight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels(names, color=INK, fontsize=10)
+        ax.set_ylabel(ylab, color=INK2, fontsize=10)
+        ax.set_title(title, color=INK, fontsize=12, fontweight="bold", loc="left")
+        ax.set_ylim(bottom=0)
+    fig.suptitle("Power modes: MAXN for max throughput, 25W for best efficiency "
+                 "(TensorRT FP16, batch 8)", color=INK, fontsize=12.5,
+                 fontweight="bold", x=0.02, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    out = os.path.join(FIG, "power_modes.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    print(f"wrote {out}")
+
+
 def fig_int8() -> None:
     """Speed-vs-accuracy trade-off: FP16 vs INT8 (throughput up, AUROC down)."""
     path = os.path.join(REPO, "results", "trt_bench.json")
@@ -515,6 +556,7 @@ def main() -> None:
     fig_regime_peak(cfg)
     fig_trt(cfg)
     fig_int8()
+    fig_power_modes()
     fig_tta()
     fig_cost()
 

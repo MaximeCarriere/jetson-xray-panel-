@@ -113,6 +113,21 @@ chest-X-ray disease models are DenseNet-121 — CheXNet made it the field standa
 so ResNet-50 is essentially the only *distinct* architecture available with real
 chest-disease weights in torchxrayvision.)
 
+## Power modes — where's the efficiency sweet spot?
+
+Same TensorRT FP16 workload (batch 8) at each of the board's power modes. → `power_modes.png`
+
+| Mode | Throughput | Power | Efficiency |
+|---|---:|---:|---:|
+| MAXN_SUPER | 508 img/s | 17.1 W | 29.8 img/s/W |
+| **25 W** | 459 img/s | 15.3 W | **30.1 img/s/W** |
+| 15 W | 316 img/s | 12.0 W | 26.2 img/s/W |
+
+**MAXN for peak throughput; 25 W for best efficiency** (≈90% of the throughput at
+slightly better img/s/W and 1.8 W less). 15 W throttles too hard to be worth it.
+For a battery or fanless clinic deployment, 25 W is the operating point. Script:
+`src/power_sweep.py`, data `results/power_sweep.json`.
+
 ## Spending spare capacity on robustness (TTA / ensemble)
 
 The concurrency measurements showed the GPU has spare capacity. Can we spend it to
