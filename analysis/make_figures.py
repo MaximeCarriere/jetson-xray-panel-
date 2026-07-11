@@ -369,6 +369,52 @@ def fig_trt(cfg: dict) -> None:
     print(f"wrote {out}")
 
 
+def fig_tta() -> None:
+    """Robustness: single vs TTA vs ensemble AUROC, at ~zero extra latency."""
+    path = os.path.join(REPO, "results", "tta_bench.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        t = json.load(f)
+    a = t["auroc"]
+    rows = [
+        ("Single pass", a["single"], INK2),
+        (f"TTA ({t['views']} views)", a["tta_5views"], YELLOW),
+        (f"Ensemble ({t['ensemble_models']} models)", a["ensemble_3models"], AQUA),
+    ]
+    labels = [r[0] for r in rows]
+    vals = [r[1] for r in rows]
+    colors = [r[2] for r in rows]
+    x = np.arange(len(rows))
+    base = a["single"]
+
+    fig, ax = plt.subplots(figsize=(8, 5), facecolor=SURFACE)
+    _style(ax)
+    ax.bar(x, vals, color=colors, width=0.6, zorder=3)
+    ax.axhline(base, color=INK2, linestyle="--", linewidth=1, zorder=2)
+    for xi, v in zip(x, vals):
+        ax.annotate(f"{v:.3f}\n({v-base:+.3f})", (xi, v), textcoords="offset points",
+                    xytext=(0, 6), ha="center", color=INK, fontsize=10, fontweight="bold")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, color=INK, fontsize=10)
+    # AUROC differences are small; zoom the y-axis so they're visible.
+    lo = min(vals) - 0.01
+    ax.set_ylim(lo, max(vals) + 0.012)
+    ax.set_ylabel("macro-AUROC over 14 pathologies", color=INK2, fontsize=10)
+    ax.set_title("Spending spare capacity on robustness (ChestMNIST, 2000 images)",
+                 color=INK, fontsize=12.5, fontweight="bold", loc="left")
+    lat = t["latency_ms"]
+    ax.annotate(f"cost is ~free: {t['views']} views run as one batch = "
+                f"{lat['tta_5views_one_batch']:.0f} ms vs {lat['single']:.0f} ms single "
+                f"— ensembling adds +{a['ensemble_3models']-base:.3f} AUROC; naive TTA does not help",
+                (0.0, -0.14), xycoords="axes fraction", color=INK2, fontsize=8.5)
+    fig.tight_layout()
+    out = os.path.join(FIG, "tta_robustness.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE, bbox_inches="tight")
+    print(f"wrote {out}")
+
+
 def fig_cost() -> None:
     """Cumulative cost: one-time $249 edge box vs a recurring cloud GPU.
 
@@ -426,6 +472,7 @@ def main() -> None:
     fig_saturation(cfg)
     fig_regime_peak(cfg)
     fig_trt(cfg)
+    fig_tta()
     fig_cost()
 
 
