@@ -128,6 +128,23 @@ slightly better img/s/W and 1.8 W less). 15 W throttles too hard to be worth it.
 For a battery or fanless clinic deployment, 25 W is the operating point. Script:
 `src/power_sweep.py`, data `results/power_sweep.json`.
 
+## Always-on? Sustained-load endurance
+
+Twenty minutes of continuous TensorRT FP16 inference, sampling every 10 s. → `endurance.png`
+
+- **Throughput: 507 → 508 img/s (−0.2 %)** — dead flat, no drop.
+- **Temperature plateaus at 71 °C** (from 58 °C), well under the ~87 °C throttle
+  threshold. Steady 18 W, GPU 98 %.
+- **No thermal throttling** — the box sustains full throughput indefinitely, so it's
+  a real always-on device, not just a benchmark burst. Script: `src/endurance.py`.
+
+## Live demo, TensorRT-powered
+
+`demo/demo_panel_trt.py` runs the multi-clinician panel on **concurrent TensorRT
+engines in one process**: 4 clinicians, **~398 img/s aggregate** (vs ~75 img/s for
+the PyTorch demo — 5×), GPU 97 %, 16 W, no memory wall. This is the strongest live
+capability showcase.
+
 ## Spending spare capacity on robustness (TTA / ensemble)
 
 The concurrency measurements showed the GPU has spare capacity. Can we spend it to

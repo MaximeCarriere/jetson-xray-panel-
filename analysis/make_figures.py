@@ -369,6 +369,41 @@ def fig_trt(cfg: dict) -> None:
     print(f"wrote {out}")
 
 
+def fig_endurance() -> None:
+    """Sustained-load timeline: throughput holds while temperature plateaus."""
+    path = os.path.join(REPO, "results", "endurance.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        d = json.load(f)
+    s = d["samples"]
+    t = [x["t_s"] / 60 for x in s]                 # minutes
+    ips = [x["ips"] for x in s]
+    temp = [x["temp_c"] for x in s]
+
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(9, 5.6), facecolor=SURFACE, sharex=True)
+    _style(a1)
+    a1.plot(t, ips, color=BLUE, linewidth=2)
+    a1.set_ylabel("images / second", color=INK2, fontsize=10)
+    a1.set_ylim(0, max(ips) * 1.15)
+    a1.set_title(f"Sustained load: throughput holds ({d['throughput_drop_pct']:+.1f}% "
+                 f"over {d['minutes']:.0f} min), no thermal throttling",
+                 color=INK, fontsize=12, fontweight="bold", loc="left")
+    _style(a2)
+    a2.plot(t, temp, color=RED, linewidth=2)
+    a2.axhline(87, color=INK2, linestyle=":", linewidth=1)
+    a2.annotate("throttle threshold ≈ 87°C", (0.02, 87), xycoords=("axes fraction", "data"),
+                color=INK2, fontsize=8.5, va="bottom")
+    a2.set_ylabel("junction temp (°C)", color=INK2, fontsize=10)
+    a2.set_xlabel("minutes", color=INK2, fontsize=10)
+    a2.set_ylim(min(temp) - 5, 92)
+    fig.tight_layout()
+    out = os.path.join(FIG, "endurance.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    print(f"wrote {out}")
+
+
 def fig_power_modes() -> None:
     """Throughput and efficiency across power modes (find the sweet spot)."""
     path = os.path.join(REPO, "results", "power_sweep.json")
@@ -557,6 +592,7 @@ def main() -> None:
     fig_trt(cfg)
     fig_int8()
     fig_power_modes()
+    fig_endurance()
     fig_tta()
     fig_cost()
 
