@@ -1,0 +1,8 @@
+{
+  "_note": "TensorRT 10.3 FP16 engine of densenet121-res224-all on Jetson Orin Nano Super (MAXN_SUPER). Throughput in images/sec. Accuracy vs PyTorch FP32: max 0.86 percentage-point diff on pathology probabilities. Measured via trtexec (batched) and src/trt_runner.py (concurrent).",
+  "accuracy_max_pp_diff": 0.86,
+  "single_stream_ips": 270.7,
+  "batched_ips": {"1": 270.7, "2": 375.5, "4": 459.1, "8": 509.1},
+  "concurrent_streams_ips": {"1": 252.3, "2": 331.1, "4": 402.9, "6": 437.9, "8": 460.1},
+  "pytorch_reference_ips": {"sequential": 20.7, "batched8": 167.0, "concurrent_batched_peak": 180.0}
+}

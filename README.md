@@ -44,6 +44,33 @@ Measured on the board in `MAXN_SUPER` mode, FP16 (autocast), DenseNet-121,
    (`C4b4_diff`): 180 img/s at 18 W, GPU saturated. This is the config the demo
    should showcase. → `saturation.png`, `regime_peak.png`
 
+## TensorRT FP16 — the real edge-deployment path (tested)
+
+Porting the DenseNet to a **TensorRT FP16 engine** (layer fusion + kernel
+auto-tuning for this exact chip — *not* INT8 quantization, so accuracy is
+preserved) transforms the box. → `pytorch_vs_tensorrt.png`
+
+| Stage | Throughput | vs naive |
+|---|---:|---:|
+| PyTorch sequential (naive) | 21 img/s | 1× |
+| PyTorch best (concurrent + batched) | 180 img/s | 9× |
+| TensorRT FP16, single stream | 271 img/s | 13× |
+| **TensorRT FP16, batched ×8** | **509 img/s** | **25×** |
+
+- **Accuracy preserved:** TRT FP16 vs PyTorch FP32 pathology probabilities agree to
+  within **0.86 percentage points** (max; 0.05 pp mean). FP16, not INT8 — no
+  quantization accuracy risk.
+- **TRT engines overlap in-process** where PyTorch CUDA streams did not: K=1→8
+  concurrent engines scale 252→460 img/s, all in one process (one engine, ~30 MB
+  per context — no memory wall). TRT issues one `execute` call per model instead of
+  200 GIL-serialized kernel launches, so streams actually overlap.
+- Consistent with the PyTorch findings, **batching one engine (509) still beats 8
+  concurrent engines (460)** — batching remains the efficiency king.
+
+Pipeline: `src/trt_export.py` (→ ONNX) → `trtexec --fp16` (→ engine) →
+`src/trt_runner.py` (accuracy check + concurrent benchmark). Raw numbers in
+`results/trt_bench.json`.
+
 ## Realistic mixed-architecture panel
 
 Beyond the homogeneous scaling curves, we ran one **genuinely heterogeneous**
@@ -165,8 +192,11 @@ only help when you are memory-bound and throughput-tolerant.
 
 ## Future work
 
-- **TensorRT** port of the best configs (better concurrent execution on Jetson;
-  its per-engine execution contexts may overlap where CUDA streams did not).
+- **TensorRT the full different-models panel** (export every DenseNet variant +
+  ResNet-50 to engines, run concurrently) — single-model TRT is done; the mixed
+  panel on TRT is the natural next step.
+- **INT8 quantization** with calibration — would need an AUROC accuracy study
+  (labeled data) since INT8 *can* shift predictions, unlike the FP16 used here.
 - **TTA / ensembling**: spend spare concurrent capacity on diagnostic robustness
   (AUROC) rather than only throughput.
 - **Live multi-clinician demo** (Section 9 of PLAN.md) with a real-time

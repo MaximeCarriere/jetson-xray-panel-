@@ -325,6 +325,50 @@ def fig_regime_peak(cfg: dict) -> None:
     print(f"wrote {out}")
 
 
+def fig_trt(cfg: dict) -> None:
+    """PyTorch vs TensorRT: the throughput journey on one $249 box (same accuracy)."""
+    path = os.path.join(REPO, "results", "trt_bench.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        t = json.load(f)
+
+    rows = [
+        ("PyTorch — sequential\n(naive)", t["pytorch_reference_ips"]["sequential"], INK2),
+        ("PyTorch — best\n(concurrent + batched)", t["pytorch_reference_ips"]["concurrent_batched_peak"], BLUE),
+        ("TensorRT FP16\nsingle stream", t["single_stream_ips"], VIOLET),
+        ("TensorRT FP16\nbatched (×8)", t["batched_ips"]["8"], AQUA),
+    ]
+    labels = [r[0] for r in rows]
+    vals = [r[1] for r in rows]
+    colors = [r[2] for r in rows]
+    y = np.arange(len(rows))
+
+    fig, ax = plt.subplots(figsize=(9, 4.6), facecolor=SURFACE)
+    _style(ax)
+    ax.barh(y, vals, color=colors, height=0.62, zorder=3)
+    for yi, v in zip(y, vals):
+        mult = v / vals[0]
+        ax.annotate(f"{v:.0f} img/s   ({mult:.0f}× naive)", (v, yi),
+                    xytext=(6, 0), textcoords="offset points", va="center",
+                    color=INK, fontsize=10, fontweight="bold")
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, color=INK, fontsize=10)
+    ax.invert_yaxis()
+    ax.set_xlabel("throughput (images / second)", color=INK2, fontsize=10)
+    ax.set_xlim(0, max(vals) * 1.28)
+    ax.set_title("TensorRT unlocks the box: 25× the naive throughput, same accuracy",
+                 color=INK, fontsize=12.5, fontweight="bold", loc="left")
+    ax.annotate(f"TensorRT FP16 vs PyTorch FP32: pathology probabilities agree to "
+                f"within {t['accuracy_max_pp_diff']} percentage points",
+                (0.0, -0.17), xycoords="axes fraction", color=INK2, fontsize=8.5)
+    fig.tight_layout()
+    out = os.path.join(FIG, "pytorch_vs_tensorrt.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE, bbox_inches="tight")
+    print(f"wrote {out}")
+
+
 def fig_cost() -> None:
     """Cumulative cost: one-time $249 edge box vs a recurring cloud GPU.
 
@@ -381,6 +425,7 @@ def main() -> None:
     fig_power_efficiency(cfg)
     fig_saturation(cfg)
     fig_regime_peak(cfg)
+    fig_trt(cfg)
     fig_cost()
 
 
