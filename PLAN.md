@@ -1,7 +1,7 @@
 # Master Plan: Concurrent Multi-Model Chest X-Ray Inference on NVIDIA Jetson Orin Nano Super
 
 > **Purpose of this document.** This is a build spec for a 2-week proof-of-concept.
-> It is written to be handed to a coding agent (Claude Code) and to a human (Maxime)
+> It is written to be handed to a coding agent and to a human (Maxime)
 > together. It defines the goal, the hardware, the experiments, the code structure,
 > the measurement protocol, and the deliverables. Follow it top to bottom.
 
@@ -392,7 +392,7 @@ proving they run in parallel.
 
 ---
 
-## 11. Instructions for the Coding Agent (Claude Code)
+## 11. Instructions for the Coding Agent
 
 When implementing from this spec:
 
