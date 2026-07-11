@@ -4,13 +4,15 @@ Confirms CUDA is live, loads one pretrained model, runs a single FP16 (autocast)
 inference, and prints the pathology probabilities so we can eyeball that they are
 in range. Run on the board:
 
-    ~/xray-venv/bin/python ~/jetson-xray-panel/src/smoke_test.py
+    ~/xray-venv/bin/python ~/jetson-xray-panel/experiments/xp01_baselines/smoke_test.py
 """
 from __future__ import annotations
 
 import numpy as np
 import torch
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "lib"))
 import models
 import utils
 

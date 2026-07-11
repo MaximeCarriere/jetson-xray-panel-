@@ -16,29 +16,18 @@ and report macro-AUROC over the 14 pathologies for each, plus the systems cost.
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "lib"))
 
 import numpy as np
 import torch
 import torchvision.transforms.functional as TF
-from sklearn.metrics import roc_auc_score
 
 import models
-
-# ChestMNIST label order (from medmnist INFO).
-MEDMNIST_LABELS = ["atelectasis", "cardiomegaly", "effusion", "infiltration",
-                   "mass", "nodule", "pneumonia", "pneumothorax", "consolidation",
-                   "edema", "emphysema", "fibrosis", "pleural", "hernia"]
-
-
-def _norm_name(p: str) -> str:
-    n = p.lower()
-    return "pleural" if n.startswith("pleural") else n
-
-
-def _xrv_normalize(img255: torch.Tensor) -> torch.Tensor:
-    """[0,255] float tensor -> xrv range [-1024,1024] (matches xrv.datasets.normalize)."""
-    return (2.0 * (img255 / 255.0) - 1.0) * 1024.0
+from chest_labels import MEDMNIST_LABELS, col_map, macro_auroc, xrv_normalize
 
 
 def _augment(batch255: torch.Tensor, angle: float, contrast: float,
@@ -72,36 +61,13 @@ def _predict(model, batch255: torch.Tensor, col_map, n_labels, bs=64) -> np.ndar
     """Run model over a [0,255] batch, return (N,14) probs mapped to MEDMNIST order."""
     out = np.full((batch255.shape[0], n_labels), np.nan, dtype=np.float64)
     for i in range(0, batch255.shape[0], bs):
-        chunk = _xrv_normalize(batch255[i:i + bs])
+        chunk = xrv_normalize(batch255[i:i + bs])
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
             logits = model(chunk)
         probs = torch.sigmoid(logits).float().cpu().numpy()
         for model_col, med_col in col_map:
             out[i:i + bs, med_col] = probs[:, model_col]
     return out
-
-
-def _col_map(model):
-    """Map model output columns -> ChestMNIST label columns by name."""
-    pm = []
-    for j, path in enumerate(model.pathologies):
-        if not path:
-            continue
-        name = _norm_name(path)
-        if name in MEDMNIST_LABELS:
-            pm.append((j, MEDMNIST_LABELS.index(name)))
-    return pm
-
-
-def _macro_auroc(y_true, y_score):
-    """Mean AUROC over labels that have both classes present."""
-    aucs = []
-    for c in range(y_true.shape[1]):
-        yt = y_true[:, c]
-        if yt.min() == yt.max() or np.isnan(y_score[:, c]).any():
-            continue
-        aucs.append(roc_auc_score(yt, y_score[:, c]))
-    return float(np.mean(aucs)), len(aucs)
 
 
 def main():
@@ -123,11 +89,11 @@ def main():
     n_lab = len(MEDMNIST_LABELS)
 
     nih = models.load_model("densenet121-res224-nih", "cuda")
-    cmap = _col_map(nih)
+    cmap = col_map(nih)
 
     # 1) single-pass (view 0 only)
     single = _predict(nih, batch, cmap, n_lab)
-    auc_single, k = _macro_auroc(labels, single)
+    auc_single, k = macro_auroc(labels, single)
 
     # 2) TTA — average K views
     views = VIEW_BANK[:args.views]
@@ -135,7 +101,7 @@ def main():
     for (ang, con, bri) in views:
         acc += _predict(nih, _augment(batch, ang, con, bri), cmap, n_lab)
     tta = acc / len(views)
-    auc_tta, _ = _macro_auroc(labels, tta)
+    auc_tta, _ = macro_auroc(labels, tta)
 
     # 3) ensemble — average different-dataset DenseNets (single-pass each)
     ens_models = ["densenet121-res224-all", "densenet121-res224-nih",
@@ -144,12 +110,12 @@ def main():
     ens_cnt = np.zeros_like(single)
     for name in ens_models:
         m = models.load_model(name, "cuda")
-        p = _predict(m, batch, _col_map(m), n_lab)
+        p = _predict(m, batch, col_map(m), n_lab)
         mask = ~np.isnan(p)
         ens_acc[mask] += p[mask]
         ens_cnt[mask] += 1
     ensemble = np.where(ens_cnt > 0, ens_acc / np.maximum(ens_cnt, 1), np.nan)
-    auc_ens, _ = _macro_auroc(labels, ensemble)
+    auc_ens, _ = macro_auroc(labels, ensemble)
 
     print(f"\n=== Robustness (macro-AUROC over {k} pathologies, {len(imgs)} images) ===")
     print(f"  single-pass          : {auc_single:.4f}")

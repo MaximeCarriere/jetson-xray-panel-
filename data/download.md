@@ -17,7 +17,7 @@ pip install kaggle
 kaggle datasets download -d paultimothymooney/chest-xray-pneumonia -p data/
 unzip -q data/chest-xray-pneumonia.zip -d data/
 # then point the benchmark at the images:
-#   python src/benchmark.py --image-dir data/chest_xray/train
+#   python experiments/xp01_baselines/benchmark.py --image-dir data/chest_xray/train
 ```
 
 ## Option B — torchxrayvision bundled samples / NIH subset

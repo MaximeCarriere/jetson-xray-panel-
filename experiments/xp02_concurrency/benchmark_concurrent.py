@@ -14,7 +14,7 @@ the tegrastats-based PowerLogger and MPS control run cleanly in the parent.
 
 Usage on the board:
 
-    ~/xray-venv/bin/python ~/jetson-xray-panel/src/benchmark_concurrent.py \
+    ~/xray-venv/bin/python ~/jetson-xray-panel/experiments/xp02_concurrency/benchmark_concurrent.py \
         --repeats 3 --duration 8
 """
 from __future__ import annotations
@@ -25,6 +25,8 @@ import os
 import subprocess
 import time
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "lib"))
 import models
 import runner_concurrent
 import utils

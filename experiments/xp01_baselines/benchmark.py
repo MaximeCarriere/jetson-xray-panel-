@@ -6,7 +6,7 @@ writes one JSON record per run to results/raw/ in the Section-6 schema.
 
 Usage on the board:
 
-    ~/xray-venv/bin/python ~/jetson-xray-panel/src/benchmark.py \
+    ~/xray-venv/bin/python ~/jetson-xray-panel/experiments/xp01_baselines/benchmark.py \
         --configs S1,B2,B4,B8 --repeats 3 --n-images 200
 
 This module covers the Week-1 baselines (sequential + batched). The concurrent
@@ -21,6 +21,8 @@ import time
 
 import torch
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "lib"))
 import models
 import runner_batched
 import runner_sequential

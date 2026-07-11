@@ -7,14 +7,17 @@ Runs the engine over N labeled NIH chest X-rays and reports macro-AUROC over the
 """
 from __future__ import annotations
 
+import os
 import sys
 import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "lib"))
 
 import numpy as np
 import torch
 
 import models
-import tta_experiment as tta          # reuse label map + macro-AUROC
+import chest_labels as cl              # shared label map + macro-AUROC
 from trt_runner import TRTModel
 
 
@@ -27,10 +30,10 @@ def eval_engine(engine_path: str, n: int = 2000) -> float:
 
     # Engine outputs 14 logits in the nih model's pathology order; map to ChestMNIST.
     nih = models.load_model("densenet121-res224-nih", "cuda")
-    cmap = tta._col_map(nih)
+    cmap = cl.col_map(nih)
 
     trt_model = TRTModel(engine_path)
-    preds = np.full((n, len(tta.MEDMNIST_LABELS)), np.nan)
+    preds = np.full((n, len(cl.MEDMNIST_LABELS)), np.nan)
     bs = 16          # must stay within the engine's max batch profile (16)
     t0 = time.perf_counter()
     for i in range(0, n, bs):
@@ -40,7 +43,7 @@ def eval_engine(engine_path: str, n: int = 2000) -> float:
             preds[i:i + bs, dc] = probs[:, mc]
     dt = time.perf_counter() - t0
 
-    auc, k = tta._macro_auroc(labels, preds)
+    auc, k = cl.macro_auroc(labels, preds)
     print(f"{engine_path.split('/')[-1]:28s} macro-AUROC {auc:.4f} "
           f"({k} labels, {n} imgs, {n/dt:.0f} img/s)")
     return auc

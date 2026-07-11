@@ -1,0 +1,32 @@
+# XP6 — TensorRT FP16
+
+Port the DenseNet to a **TensorRT FP16 engine** (layer fusion + kernel auto-tuning
+for this exact chip — *not* INT8, so accuracy is preserved).
+
+## Result
+| Stage | Throughput | vs naive |
+|---|---:|---:|
+| PyTorch sequential | 21 img/s | 1× |
+| PyTorch best (concurrent+batched) | 180 img/s | 9× |
+| TensorRT FP16, single stream | 271 img/s | 13× |
+| **TensorRT FP16, batched ×8** | **509 img/s** | **25×** |
+
+- **Accuracy preserved:** FP16 vs PyTorch FP32 pathology probabilities agree to
+  within **0.86 pp** (measured on ChestMNIST — see `trt_eval_auroc.py`; FP16 AUROC
+  0.7405 = PyTorch 0.7405).
+- **TRT engines overlap in-process** (252→460 img/s, K=1..8) where CUDA streams did
+  not, with no memory wall — one execute call per model, not 200 GIL-serialized kernels.
+
+![pytorch vs tensorrt](../../results/figures/pytorch_vs_tensorrt.png)
+
+## Run
+```bash
+~/xray-venv/bin/python trt_export.py densenet121-res224-all ~/densenet_all.onnx --batch 1
+/usr/src/tensorrt/bin/trtexec --onnx=~/densenet_all.onnx --fp16 --saveEngine=~/densenet_all.engine \
+    --minShapes=image:1x1x224x224 --optShapes=image:4x1x224x224 --maxShapes=image:8x1x224x224
+~/xray-venv/bin/python ../../lib/trt_runner.py ~/densenet_all.engine   # accuracy + concurrent test
+```
+
+## Files
+`trt_export.py` (→ ONNX) · `trt_eval_auroc.py` (AUROC on labeled data). Runtime
+`lib/trt_runner.py`. Data `../../results/trt_bench.json`.
