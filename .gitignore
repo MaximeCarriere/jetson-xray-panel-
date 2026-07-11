@@ -1,0 +1,22 @@
+# Data & model weights — never commit (Section 3 of PLAN.md)
+data/**
+!data/download.md
+*.pth
+*.pt
+*.onnx
+*.engine
+
+# Raw per-run results — regenerable, gitignored (Section 6)
+results/raw/**
+!results/raw/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+xray-venv/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+*.swp

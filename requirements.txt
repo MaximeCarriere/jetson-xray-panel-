@@ -1,0 +1,55 @@
+# ============================================================================
+# Jetson Orin Nano Super (JetPack R36.4.3 / CUDA 12.6 / Python 3.10) environment
+# ----------------------------------------------------------------------------
+# These are Jetson-specific wheels — they DO NOT install from plain PyPI.
+# Reproduce the environment on the board with:
+#
+#   sudo apt-get update && sudo apt-get install -y python3.10-venv
+#   python3 -m venv ~/xray-venv --system-site-packages
+#   ~/xray-venv/bin/pip install --upgrade pip
+#
+#   # 1. PyTorch + torchvision from the Jetson AI Lab index (NOTE: .io, not .dev):
+#   ~/xray-venv/bin/pip install torch==2.11.0 torchvision==0.26.0 \
+#       --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
+#
+#   # 2. cuDSS (torch 2.11 needs libcudss.so.0, not on the default RPATH):
+#   ~/xray-venv/bin/pip install nvidia-cudss-cu12==0.8.0.10 \
+#       --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
+#   SP=~/xray-venv/lib/python3.10/site-packages
+#   ln -sf $SP/nvidia/cu12/lib/libcudss*.so.0 $SP/torch/lib/   # put on torch RPATH
+#
+#   # 3. FIX cuBLAS mismatch: the pip nvidia-cublas-cu12 (12.9.x) is INCOMPATIBLE
+#   #    with the L4T CUDA 12.6 driver -> CUBLAS_STATUS_ALLOC_FAILED. Point torch
+#   #    at the SYSTEM cuBLAS 12.6 instead:
+#   CB=$SP/nvidia/cublas/lib; CUDA=/usr/local/cuda-12.6/lib64
+#   for lib in libcublas.so.12 libcublasLt.so.12; do \
+#       mv $CB/$lib $CB/$lib.pip-bak; ln -sf $CUDA/$lib $CB/$lib; done
+#
+#   # 4. Analysis / model deps (force into venv to shadow system-site-packages
+#   #    copies that are ABI-mismatched against the venv numpy):
+#   ~/xray-venv/bin/pip install -I numpy pandas scikit-image matplotlib
+#   ~/xray-venv/bin/pip install torchxrayvision==1.5.2
+#
+#   # 5. Monitoring (system-wide, provides the jtop service):
+#   sudo pip3 install jetson-stats
+#
+# IMPORTANT: run all torchxrayvision models in FP16 via torch.autocast, NOT
+# model.half() — .half() breaks xrv's op_norm (FP32 op_threshs buffer).
+# ============================================================================
+
+# --- Jetson-specific (from https://pypi.jetson-ai-lab.io/jp6/cu126) ---
+torch==2.11.0
+torchvision==0.26.0
+nvidia-cudss-cu12==0.8.0.10
+# nvidia-cublas-cu12==12.9.2.10  # installed but .so symlinked to system 12.6 (see step 3)
+
+# --- from PyPI ---
+torchxrayvision==1.5.2
+numpy==2.2.6
+pandas==2.3.3
+scipy==1.15.3
+scikit-image==0.25.2
+matplotlib==3.10.9
+pillow==12.3.0
+imageio==2.37.3
+# jetson-stats  # installed system-wide via sudo pip3, not in the venv
