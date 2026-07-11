@@ -139,11 +139,34 @@ PLAN.md                    # full build spec
 - "True parallel" on one GPU = interleaved kernels; gains are **sublinear** — stated
   plainly, because the sublinear curve is the result.
 
+## CUDA streams: memory vs. throughput trade-off (tested)
+
+We tested the obvious fix for the memory wall — run all N models in **one process,
+one CUDA context, one stream each** (`src/runner_streams.py`). Result:
+
+| N models | throughput | round latency | peak memory |
+|---:|---:|---:|---:|
+| 2 | 20 img/s | 99 ms | 93 MB |
+| 8 | 20 img/s | 400 ms | 446 MB |
+| 12 | 20 img/s | 604 ms | 680 MB |
+
+- ✅ **Memory wall gone** — 12 models fit in 680 MB (vs. the process-per-model
+  approach dying at 8 on 8 GB).
+- ❌ **No throughput gain** — pinned at the single-model rate (~20 img/s) for *any*
+  N; round latency grows strictly linearly. The models run **serially**: they are
+  batch-1, launch-bound, and Python's GIL issues one model's kernels fully before
+  the next, so nothing overlaps.
+
+**Conclusion:** the two concurrency mechanisms trade off. **MPS + multiprocessing**
+gives real throughput overlap (100 img/s at 6 models) but is memory-capped ~6–7;
+**CUDA streams** scale to many models in tiny memory but serialize execution. For
+this workload the throughput path is MPS-multiprocessing (or plain batching); streams
+only help when you are memory-bound and throughput-tolerant.
+
 ## Future work
 
-- **CUDA streams / shared context** to break the per-process memory wall and scale
-  concurrency past ~6 models.
-- **TensorRT** port of the best configs (better concurrent execution on Jetson).
+- **TensorRT** port of the best configs (better concurrent execution on Jetson;
+  its per-engine execution contexts may overlap where CUDA streams did not).
 - **TTA / ensembling**: spend spare concurrent capacity on diagnostic robustness
   (AUROC) rather than only throughput.
 - **Live multi-clinician demo** (Section 9 of PLAN.md) with a real-time
