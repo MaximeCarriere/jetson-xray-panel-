@@ -93,6 +93,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, default=25.0)
     ap.add_argument("--engines", nargs="*", default=None)
+    ap.add_argument("--record", default=None, help="write frame data JSON for replay")
     args = ap.parse_args()
 
     clin = DEFAULT_CLINICIANS if not args.engines else [
@@ -113,6 +114,7 @@ def main():
     counts = [0] * n
     ips = [0.0] * n
     power = {}
+    frames = []
     with PowerLogger(interval_ms=200) as plog:
         t0 = time.perf_counter()
         last, win = t0, [0] * n
@@ -131,6 +133,23 @@ def main():
                 power = plog.latest()
                 sys.stdout.write(_render(elapsed, names, questions, ips, counts, power, n))
                 sys.stdout.flush()
+                if args.record:
+                    frames.append({
+                        "t": round(elapsed, 2),
+                        "clinicians": [{"name": names[i], "question": questions[i],
+                                        "ips": round(ips[i], 1), "total": counts[i]}
+                                       for i in range(n)],
+                        "aggregate_ips": round(sum(ips), 1),
+                        "gpu": power.get("gpu_util_pct"),
+                        "power_w": power.get("power_w"),
+                        "temp_c": round(power["temp_c"]) if power.get("temp_c") else None,
+                    })
+
+    if args.record:
+        import json
+        with open(args.record, "w") as f:
+            json.dump({"seconds": args.seconds, "n": n, "frames": frames}, f)
+        print(f"  recorded {len(frames)} frames -> {args.record}")
 
     total = sum(counts)
     print(f"\n  {BOLD}{GRN}Done.{RST} {n} TensorRT models served {total} images in "
