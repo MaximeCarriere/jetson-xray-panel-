@@ -100,6 +100,17 @@ class PowerLogger:
         if self._thread:
             self._thread.join(timeout=2)
 
+    def latest(self) -> dict:
+        """Most recent sample as plain values, for live readouts (None if no data)."""
+        if not self.samples:
+            return {"power_w": None, "gpu_util_pct": None, "temp_c": None}
+        s = self.samples[-1]
+        return {
+            "power_w": None if s.vdd_in_mw is None else round(s.vdd_in_mw / 1000, 1),
+            "gpu_util_pct": s.gr3d_pct,
+            "temp_c": s.tj_c,
+        }
+
     def summary(self, t_start: float | None = None, t_end: float | None = None) -> dict:
         """Aggregate power/util/temp over samples in [t_start, t_end].
 
