@@ -4,5 +4,11 @@
   "single_stream_ips": 270.7,
   "batched_ips": {"1": 270.7, "2": 375.5, "4": 459.1, "8": 509.1},
   "concurrent_streams_ips": {"1": 252.3, "2": 331.1, "4": 402.9, "6": 437.9, "8": 460.1},
-  "pytorch_reference_ips": {"sequential": 20.7, "batched8": 167.0, "concurrent_batched_peak": 180.0}
+  "pytorch_reference_ips": {"sequential": 20.7, "batched8": 167.0, "concurrent_batched_peak": 180.0},
+  "int8": {
+    "_note": "INT8 post-training quantization (entropy calibration on 512 ChestMNIST images), densenet-nih. Speed vs accuracy trade-off measured on 2000 labeled test images.",
+    "auroc": {"pytorch_fp32": 0.7405, "trt_fp16": 0.7405, "trt_int8": 0.6868},
+    "batched8_ips": {"trt_fp16": 509.1, "trt_int8": 1034.7},
+    "engine_mb": {"fp16": 14.9, "int8": 8.8}
+  }
 }

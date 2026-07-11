@@ -71,6 +71,25 @@ Pipeline: `src/trt_export.py` (→ ONNX) → `trtexec --fp16` (→ engine) →
 `src/trt_runner.py` (accuracy check + concurrent benchmark). Raw numbers in
 `results/trt_bench.json`.
 
+### INT8 quantization — the speed/accuracy trade-off, measured
+
+Unlike FP16, INT8 quantization *can* move predictions — so we calibrated an INT8
+engine (entropy calibration on 512 ChestMNIST images) and measured real AUROC on
+2000 labeled test images. → `int8_tradeoff.png`
+
+| Precision | Throughput (batch 8) | AUROC | Engine |
+|---|---:|---:|---:|
+| PyTorch (FP16 autocast) | 167 img/s | 0.7405 | — |
+| TensorRT FP16 | 509 img/s | **0.7405** (same) | 14.9 MB |
+| TensorRT INT8 | **1035 img/s** (2×, **50× naive**) | 0.6868 (**−0.054**) | 8.8 MB |
+
+- **FP16 is a free lunch** — identical AUROC to PyTorch, 3× the speed.
+- **INT8 doubles throughput again (~1035 img/s)** but costs **0.054 AUROC (7%)** —
+  a real, non-trivial drop from post-training quantization. It's a **screening vs.
+  diagnosis** decision: fine for high-volume triage, not for a final read.
+  (Quantization-aware training or per-channel calibration could narrow the gap —
+  future work.) Pipeline: `src/trt_int8.py`, `src/trt_eval_auroc.py`.
+
 ## Realistic mixed-architecture panel
 
 Beyond the homogeneous scaling curves, we ran one **genuinely heterogeneous**
@@ -220,8 +239,8 @@ only help when you are memory-bound and throughput-tolerant.
 - **TensorRT the full different-models panel** (export every DenseNet variant +
   ResNet-50 to engines, run concurrently) — single-model TRT is done; the mixed
   panel on TRT is the natural next step.
-- **INT8 quantization** with calibration — would need an AUROC accuracy study
-  (labeled data) since INT8 *can* shift predictions, unlike the FP16 used here.
+- **Quantization-aware training / per-channel INT8** to recover the 0.054 AUROC
+  that post-training INT8 lost, while keeping the 2× speedup.
 - **TTA / ensembling**: spend spare concurrent capacity on diagnostic robustness
   (AUROC) rather than only throughput.
 - **Live multi-clinician demo** (Section 9 of PLAN.md) with a real-time

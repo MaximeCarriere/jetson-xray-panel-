@@ -369,6 +369,48 @@ def fig_trt(cfg: dict) -> None:
     print(f"wrote {out}")
 
 
+def fig_int8() -> None:
+    """Speed-vs-accuracy trade-off: FP16 vs INT8 (throughput up, AUROC down)."""
+    path = os.path.join(REPO, "results", "trt_bench.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        t = json.load(f)
+    if "int8" not in t:
+        return
+    i8 = t["int8"]
+    pts = [
+        ("PyTorch (batched)", t["pytorch_reference_ips"]["batched8"],
+         i8["auroc"]["pytorch_fp32"], INK2),
+        ("TensorRT FP16", i8["batched8_ips"]["trt_fp16"], i8["auroc"]["trt_fp16"], BLUE),
+        ("TensorRT INT8", i8["batched8_ips"]["trt_int8"], i8["auroc"]["trt_int8"], RED),
+    ]
+    fig, ax = plt.subplots(figsize=(8.5, 5.2), facecolor=SURFACE)
+    _style(ax)
+    xs = [p[1] for p in pts]
+    ys = [p[2] for p in pts]
+    ax.plot(xs, ys, color=INK2, linewidth=1.2, linestyle="--", zorder=2)
+    offsets = [(-6, 12), (10, 10), (12, -4)]   # stagger so labels don't collide
+    for (label, x, y, c), off in zip(pts, offsets):
+        ax.scatter([x], [y], s=140, color=c, zorder=4, edgecolor=SURFACE, linewidth=1.5)
+        ax.annotate(f"{label}\n{x:.0f} img/s · AUROC {y:.3f}", (x, y),
+                    textcoords="offset points", xytext=off, color=INK, fontsize=9.5)
+    ax.set_xlabel("throughput — images / second (batch 8)  →  faster", color=INK2, fontsize=10)
+    ax.set_ylabel("macro-AUROC  →  more accurate", color=INK2, fontsize=10)
+    ax.set_xlim(0, max(xs) * 1.35)
+    ax.set_ylim(min(ys) - 0.015, max(ys) + 0.012)
+    ax.set_title("INT8 quantization: 2× faster, but a real accuracy cost",
+                 color=INK, fontsize=12.5, fontweight="bold", loc="left")
+    ax.annotate("FP16 is free (same accuracy as PyTorch); INT8 doubles throughput "
+                "to ~1035 img/s but drops AUROC by 0.054 (7%) — a screening-vs-diagnosis call",
+                (0.0, -0.15), xycoords="axes fraction", color=INK2, fontsize=8.5)
+    fig.tight_layout()
+    out = os.path.join(FIG, "int8_tradeoff.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE, bbox_inches="tight")
+    print(f"wrote {out}")
+
+
 def fig_tta() -> None:
     """Robustness: single vs TTA vs ensemble AUROC, at ~zero extra latency."""
     path = os.path.join(REPO, "results", "tta_bench.json")
@@ -472,6 +514,7 @@ def main() -> None:
     fig_saturation(cfg)
     fig_regime_peak(cfg)
     fig_trt(cfg)
+    fig_int8()
     fig_tta()
     fig_cost()
 
