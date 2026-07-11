@@ -4,10 +4,12 @@ Unlike FP16, INT8 *can* move predictions — so we calibrate on real images and
 measure the real AUROC cost.
 
 ## Result
-| Precision | Throughput (batch 8) | AUROC (± bootstrap SE) | Engine |
+Throughput = mean ± SE over 3 spaced runs; AUROC ± 1000-sample bootstrap SE.
+
+| Precision | Throughput (batch 8) | AUROC | Engine |
 |---|---:|---:|---:|
-| TensorRT FP16 | 509 img/s | **0.7405 ± 0.0134** (= PyTorch) | 14.9 MB |
-| TensorRT INT8 | **1035 img/s** (2×, 52× naive) | 0.6868 ± 0.0151 (**−0.054**) | 8.8 MB |
+| TensorRT FP16 | 511.9 ± 0.6 img/s | **0.7405 ± 0.0134** (= PyTorch) | 14.9 MB |
+| TensorRT INT8 | **1032.2 ± 1.5 img/s** (2×, 52× naive) | 0.6868 ± 0.0151 (**−0.054**) | 8.8 MB |
 
 INT8 doubles throughput but costs **0.054 AUROC (7%)** — a **screening vs diagnosis**
 call. FP16 remains the safe default. (QAT / per-channel INT8 could narrow the gap.)

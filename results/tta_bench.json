@@ -13,7 +13,7 @@
     "ensemble_3models": 0.0137
   },
   "latency_ms": {
-    "single": 61.3,
-    "tta_5views_one_batch": 50.6
+    "single": 49.7,
+    "tta_5views_one_batch": 49.9
   }
 }

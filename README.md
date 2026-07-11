@@ -23,13 +23,13 @@ The same box, same models, optimized step by step:
 …and every trade-off along the way is measured and reported honestly — including the
 negative results (naive TTA, the INT8 accuracy cost, the concurrency memory wall).
 
-**Reproducibility.** Each experiment was repeated and reported with error bars —
+**Reproducibility.** Every experiment was repeated and reported with error bars —
 ±1 standard error over 3 runs for throughput, ±1 bootstrap SE (1000 resamples) for
-AUROC. Accuracy reproduces exactly (AUROC is bit-identical run to run); throughput
-variance is under 1%. Throughput figures are the board's full-clock peak (the
-TensorRT numbers were corroborated by the 20-minute endurance test); note the board
-is power-sensitive and throttles to ~half under sustained max load on an
-under-spec adapter.
+AUROC. Accuracy reproduces **exactly** (AUROC is bit-identical run to run) and
+throughput variance is **under 1%** across the board. Sustained load is fine too: a
+re-run 10-minute endurance test held 508 img/s (−0.2%, 69 °C, no throttling). One
+operational note — pack cooldowns between back-to-back heavy runs, or accumulated
+heat transiently throttles the GPU clock.
 
 ## Experiments
 

@@ -3,11 +3,13 @@
 Same TensorRT FP16 batch-8 workload at each of the board's power modes.
 
 ## Result
+Mean ± SE over 3 runs per mode.
+
 | Mode | Throughput | Power | Efficiency |
 |---|---:|---:|---:|
-| MAXN_SUPER | 508 img/s | 17.1 W | 29.8 img/s/W |
-| **25 W** | 459 img/s | 15.3 W | **30.1 img/s/W** |
-| 15 W | 316 img/s | 12.0 W | 26.2 img/s/W |
+| MAXN_SUPER | 508.5 ± 0.6 img/s | 17.2 W | 29.58 ± 0.12 img/s/W |
+| **25 W** | 459.0 ± 0.6 img/s | 15.4 W | **29.86 ± 0.09 img/s/W** |
+| 15 W | 316.3 ± 0.0 img/s | 12.1 W | 26.07 ± 0.05 img/s/W |
 
 **MAXN for peak throughput; 25 W for best efficiency** (≈90% of the throughput,
 1.8 W less). 15 W throttles too hard. For a battery/fanless clinic box, 25 W is the

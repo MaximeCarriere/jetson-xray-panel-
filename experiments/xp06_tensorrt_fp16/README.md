@@ -4,12 +4,14 @@ Port the DenseNet to a **TensorRT FP16 engine** (layer fusion + kernel auto-tuni
 for this exact chip — *not* INT8, so accuracy is preserved).
 
 ## Result
+Throughput = mean ± SE over 3 spaced runs.
+
 | Stage | Throughput | vs naive |
 |---|---:|---:|
-| PyTorch sequential | 21 img/s | 1× |
+| PyTorch sequential | 19.9 img/s | 1× |
 | PyTorch best (concurrent+batched) | 180 img/s | 9× |
-| TensorRT FP16, single stream | 271 img/s | 13× |
-| **TensorRT FP16, batched ×8** | **509 img/s** | **25×** |
+| TensorRT FP16, single stream | 271.1 ± 0.4 img/s | 14× |
+| **TensorRT FP16, batched ×8** | **507.7 ± 0.6 img/s** | **26×** |
 
 - **Accuracy preserved:** FP16 vs PyTorch FP32 pathology probabilities agree to
   within **0.86 pp**; re-verified macro-AUROC on 2000 labeled ChestMNIST images is

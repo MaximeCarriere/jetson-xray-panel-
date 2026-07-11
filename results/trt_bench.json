@@ -1,15 +1,17 @@
 {
-  "_note": "TensorRT 10.3 FP16/INT8 engines, densenet121-res224 on Jetson Orin Nano Super (MAXN_SUPER). Throughput = validated full-clock peak (trtexec, hundreds of averaged iterations each); corroborated by the 20-min endurance test holding 508 img/s. AUROC re-verified on 2000 labeled ChestMNIST images with 1000-sample bootstrap standard error (accuracy is clock-independent, so unaffected by GPU throttling).",
+  "_note": "TensorRT 10.3 FP16/INT8 engines, densenet121-res224 on Jetson Orin Nano Super (MAXN_SUPER, full clock). Throughput = mean of 3 trtexec runs (each hundreds of averaged iterations), spaced with cooldowns to hold clocks; *_se = standard error over the 3 runs. AUROC on 2000 labeled ChestMNIST images; auroc_se = 1000-sample bootstrap SE.",
   "accuracy_max_pp_diff": 0.86,
-  "single_stream_ips": 270.7,
-  "batched_ips": {"1": 270.7, "2": 375.5, "4": 459.1, "8": 509.1},
+  "single_stream_ips": 271.1,
+  "batched_ips": {"1": 271.1, "2": 376.2, "4": 458.4, "8": 507.7},
+  "batched_se": {"1": 0.35, "2": 0.43, "4": 0.09, "8": 0.57},
   "concurrent_streams_ips": {"1": 252.3, "2": 331.1, "4": 402.9, "6": 437.9, "8": 460.1},
   "pytorch_reference_ips": {"sequential": 19.9, "batched8": 160.5, "concurrent_batched_peak": 180.0},
   "int8": {
-    "_note": "INT8 post-training quantization (entropy calibration on 512 ChestMNIST images), densenet-nih. AUROC on 2000 labeled test images; auroc_se = 1000-sample bootstrap standard error.",
+    "_note": "INT8 post-training quantization (entropy calibration on 512 ChestMNIST images), densenet-nih. Throughput = mean of 3 spaced trtexec runs; AUROC on 2000 labeled test images with 1000-sample bootstrap SE.",
     "auroc": {"pytorch_fp32": 0.7405, "trt_fp16": 0.7405, "trt_int8": 0.6868},
     "auroc_se": {"pytorch_fp32": 0.0134, "trt_fp16": 0.0134, "trt_int8": 0.0151},
-    "batched8_ips": {"trt_fp16": 509.1, "trt_int8": 1034.7},
+    "batched8_ips": {"trt_fp16": 511.9, "trt_int8": 1032.2},
+    "batched8_se": {"trt_fp16": 0.62, "trt_int8": 1.52},
     "engine_mb": {"fp16": 14.9, "int8": 8.8}
   }
 }
