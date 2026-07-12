@@ -19,7 +19,7 @@ from PIL import Image
 
 from tta_experiment import VIEW_BANK, _augment
 
-VIEW_NAMES = ["original", "rotate +7°", "rotate −7°", "contrast +15%", "bright +5% / contrast −10%"]
+VIEW_NAMES = ["original", "rotate +6°", "rotate −6°", "contrast +15%", "contrast −12% / bright +5%"]
 
 
 def datauri(arr: np.ndarray) -> str:
@@ -38,8 +38,8 @@ def main():
     batch = torch.from_numpy(img)[None, None]        # (1,1,224,224) float [0,255]
 
     views = []
-    for (ang, con, bri), name in zip(VIEW_BANK[:5], VIEW_NAMES):
-        v = _augment(batch, ang, con, bri)[0, 0].numpy()
+    for view, name in zip(VIEW_BANK[:5], VIEW_NAMES):
+        v = _augment(batch, *view)[0, 0].numpy()
         views.append({"name": name, "img": datauri(v)})
 
     out = {

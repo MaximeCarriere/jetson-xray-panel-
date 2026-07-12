@@ -574,9 +574,9 @@ def fig_tta() -> None:
                  color=INK, fontsize=12.5, fontweight="bold", loc="left")
     lat = t["latency_ms"]
     ax.annotate(f"error bars = ±1 bootstrap SE. Cost ~free: {t['views']} views as one batch = "
-                f"{lat['tta_5views_one_batch']:.0f} ms vs {lat['single']:.0f} ms — "
+                f"{lat['tta_5views_one_batch']:.0f} ms vs {lat['single']:.0f} ms —\n"
                 f"ensemble +{a['ensemble_3models']-base:.3f} AUROC; naive TTA does not help",
-                (0.0, -0.14), xycoords="axes fraction", color=INK2, fontsize=8.5)
+                (0.0, -0.17), xycoords="axes fraction", color=INK2, fontsize=8.5)
     fig.tight_layout()
     out = os.path.join(FIG, "tta_robustness.png")
     os.makedirs(FIG, exist_ok=True)
@@ -731,9 +731,9 @@ def fig_roc() -> None:
     ax.set_title("ROC — single vs TTA vs ensemble\nmacro-averaged over 14 pathologies, ChestMNIST (2000 images)",
                  color=INK, fontsize=12.5, fontweight="bold", loc="left")
     ax.set_aspect("equal", adjustable="box")
-    ax.annotate("curves nearly overlap — the ensemble edges slightly higher (see the +0.022 AUROC); "
+    ax.annotate("curves nearly overlap — the ensemble edges slightly higher (see the +0.022 AUROC);\n"
                 "naive TTA sits on top of single-pass.",
-                (0.0, -0.13), xycoords="axes fraction", color=INK2, fontsize=8.5)
+                (0.0, -0.16), xycoords="axes fraction", color=INK2, fontsize=8.5)
     fig.tight_layout()
     out = os.path.join(FIG, "roc_curves.png")
     os.makedirs(FIG, exist_ok=True)
@@ -794,10 +794,14 @@ def fig_tta_illustration() -> None:
     ey = 0.08
     add_img(orig, 0.03, ey, tw, th, "same image\n(unmodified)")
     fig.text(0.235, ey + th / 2, "→", fontsize=30, color=RED, ha="center", va="center")
-    for m, mx in zip(d["ensemble_models"], [0.40, 0.58, 0.76]):
+    mxs = [0.40, 0.58, 0.76]
+    for m, mx in zip(d["ensemble_models"], mxs):
         short = m.split("(")[1].rstrip(")") if "(" in m else m
         fig.text(mx, ey + th / 2, f"DenseNet\n({short})", ha="center", va="center",
                  fontsize=10, color=INK, bbox=box)
+    for mx in [(mxs[0] + mxs[1]) / 2, (mxs[1] + mxs[2]) / 2]:   # "+" between the models
+        fig.text(mx, ey + th / 2, "+", ha="center", va="center", fontsize=20,
+                 color=INK2, fontweight="bold")
     fig.text(0.925, ey + th / 2, "→ average\n= prediction", ha="center", va="center",
              fontsize=10.5, color=INK, fontweight="bold")
 

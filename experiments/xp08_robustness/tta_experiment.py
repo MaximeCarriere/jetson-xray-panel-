@@ -31,29 +31,39 @@ from chest_labels import MEDMNIST_LABELS, col_map, macro_auroc, xrv_normalize
 
 
 def _augment(batch255: torch.Tensor, angle: float, contrast: float,
-             bright: float) -> torch.Tensor:
-    """One label-preserving view of a [0,255] batch (N,1,H,W). No h-flip (it can
-    flip situs/cardiac laterality)."""
+             bright: float, scale: float = 1.0) -> torch.Tensor:
+    """One label-preserving view of a [0,255] batch (N,1,H,W).
+
+    Transforms are chosen to be *valid* variations of a real chest X-ray:
+      * brightness / contrast  — X-ray exposure varies shot to shot (most realistic);
+      * mild rotation ±(4-8°)  — patients aren't perfectly upright (positioning);
+      * mild scale 0.94-1.07   — source-to-detector distance / zoom.
+    NO horizontal flip — it would flip cardiac/situs laterality (not label-preserving).
+    """
     x = batch255
     if bright != 1.0:
         x = (x * bright).clamp(0, 255)
     if contrast != 1.0:
         m = x.mean(dim=(-1, -2), keepdim=True)
         x = ((x - m) * contrast + m).clamp(0, 255)
-    if angle != 0.0:
-        x = TF.rotate(x, angle, fill=0.0)
+    if angle != 0.0 or scale != 1.0:
+        x = TF.affine(x, angle=angle, translate=[0, 0], scale=scale, shear=[0.0], fill=0.0)
     return x
 
 
-# Fixed TTA view bank (view 0 is the untouched image = the single-pass baseline).
+# Fixed TTA view bank as (angle, contrast, bright, scale). View 0 = untouched image
+# (the single-pass baseline). First 5 are used for --views 5; all 10 for --views 10.
 VIEW_BANK = [
-    (0.0, 1.0, 1.0),
-    (7.0, 1.0, 1.0),
-    (-7.0, 1.0, 1.0),
-    (0.0, 1.15, 1.0),
-    (0.0, 0.90, 1.05),
-    (5.0, 1.10, 0.95),
-    (-5.0, 0.95, 1.05),
+    (0.0, 1.00, 1.00, 1.00),     # original
+    (6.0, 1.00, 1.00, 1.00),     # rotate +6°
+    (-6.0, 1.00, 1.00, 1.00),    # rotate -6°
+    (0.0, 1.15, 1.00, 1.00),     # contrast +15%
+    (0.0, 0.88, 1.05, 1.00),     # contrast -12% / bright +5%
+    (0.0, 1.00, 1.00, 1.06),     # zoom in 6%
+    (0.0, 1.00, 1.00, 0.94),     # zoom out 6%
+    (4.0, 1.08, 0.97, 1.00),     # rot +4° / contrast +8% / bright -3%
+    (-4.0, 0.95, 1.04, 1.00),    # rot -4° / contrast -5% / bright +4%
+    (0.0, 1.10, 0.96, 1.03),     # contrast +10% / bright -4% / zoom +3%
 ]
 
 
@@ -99,8 +109,8 @@ def main():
     # 2) TTA — average K views
     views = VIEW_BANK[:args.views]
     acc = np.zeros_like(single)
-    for (ang, con, bri) in views:
-        acc += _predict(nih, _augment(batch, ang, con, bri), cmap, n_lab)
+    for view in views:
+        acc += _predict(nih, _augment(batch, *view), cmap, n_lab)
     tta = acc / len(views)
     auc_tta, _ = macro_auroc(labels, tta)
 

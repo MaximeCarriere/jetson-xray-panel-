@@ -28,7 +28,7 @@ image through three models:
 | Method | AUROC (± bootstrap SE) | Δ |
 |---|---:|---:|
 | Single pass | 0.7405 ± 0.0134 | — |
-| TTA (5 augmented views) | 0.7375 ± 0.0135 | −0.003 |
+| TTA (5 augmented views) | 0.7377 ± 0.0134 | −0.003 |
 | **Ensemble (3 different-dataset DenseNets)** | **0.7621 ± 0.0137** | **+0.022** |
 
 - **Ensembling helps** (+0.022) — but with proper error bars (±1 bootstrap SE) the
@@ -37,6 +37,34 @@ image through three models:
 - **Naive TTA does not help** (−0.003, squarely within noise) — matches the literature.
 - **Cost ~free:** 5 views / 3 models run as one batch cost ~the same as a single pass —
   the spare capacity absorbs it.
+
+### Which augmentations, and does *more* of them help?
+
+The 5 views are all **label-preserving** variations a real chest X-ray genuinely shows
+shot-to-shot (see `_augment` in `tta_experiment.py`):
+
+| Transform | Why it's valid on a CXR |
+|---|---|
+| **brightness / contrast** | exposure (kVp/mAs) varies every shot — **the most realistic** knob |
+| **mild rotation ±6°** | patients aren't perfectly upright; slight positioning tilt |
+| **mild scale ±6%** | source-to-detector distance / crop zoom varies |
+
+We deliberately **do not horizontal-flip** — that would swap left/right and flip
+cardiac/situs laterality, so it is *not* label-preserving (the heart is on the left).
+
+Does throwing more views at it help? We ran it at **5 and at 10** views (the 10-view bank
+adds two zooms and four combined rotate+exposure+zoom views):
+
+| Config | AUROC | Δ vs single | Latency (1 batch) |
+|---|---:|---:|---:|
+| Single pass | 0.7405 | — | 49.5 ms |
+| TTA — 5 views | 0.7377 | −0.0028 | 49.6 ms (**1.00×**) |
+| TTA — 10 views | 0.7376 | −0.0029 | 51.4 ms (1.06×) |
+
+Doubling the views moves AUROC by **0.0001** — i.e. nothing. The lesson isn't "use fewer
+views," it's that **naive averaging of augmented views doesn't add signal here regardless
+of count**; the diversity that *does* help comes from **different models** (the ensemble),
+not different views of the same model. More views only cost more compute for no gain.
 
 ![tta robustness](../../results/figures/tta_robustness.png)
 

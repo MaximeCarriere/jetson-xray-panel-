@@ -4,16 +4,16 @@
   "ensemble_models": 3,
   "auroc": {
     "single": 0.7405,
-    "tta_5views": 0.7375,
+    "tta_5views": 0.7377,
     "ensemble_3models": 0.7621
   },
   "auroc_se": {
     "single": 0.0134,
-    "tta_5views": 0.0135,
+    "tta_5views": 0.0134,
     "ensemble_3models": 0.0137
   },
   "latency_ms": {
-    "single": 49.7,
-    "tta_5views_one_batch": 49.9
+    "single": 49.5,
+    "tta_5views_one_batch": 49.6
   }
 }
