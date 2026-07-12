@@ -40,6 +40,17 @@ image through three models:
 
 ![tta robustness](../../results/figures/tta_robustness.png)
 
+### ROC curves
+
+Macro-averaged ROC over the 14 pathologies (the threshold-free view behind the AUROC).
+The three curves nearly overlap — **the ensemble (green) edges slightly higher, while
+TTA (yellow) sits right on top of single-pass** — which is exactly the honest picture:
+a small real ensemble gain, no TTA gain. (ChestMNIST is multi-label, so this is the
+right visual — a standard multi-class confusion matrix doesn't apply, and would need
+an arbitrary threshold; ROC/AUROC is threshold-free.)
+
+![ROC curves](../../results/figures/roc_curves.png)
+
 ## Run
 ```bash
 setsid bash run_tta.sh --n 2000 --views 5

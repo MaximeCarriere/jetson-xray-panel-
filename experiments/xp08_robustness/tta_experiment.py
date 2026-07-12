@@ -74,6 +74,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=2000, help="test images to evaluate")
     ap.add_argument("--views", type=int, default=5, help="TTA views (incl. original)")
+    ap.add_argument("--export-preds", default=None, help="save raw predictions (.npz) for ROC")
     args = ap.parse_args()
 
     from medmnist import ChestMNIST
@@ -116,6 +117,10 @@ def main():
         ens_cnt[mask] += 1
     ensemble = np.where(ens_cnt > 0, ens_acc / np.maximum(ens_cnt, 1), np.nan)
     auc_ens, _ = macro_auroc(labels, ensemble)
+
+    if args.export_preds:
+        np.savez(args.export_preds, labels=labels, single=single, tta=tta, ensemble=ensemble)
+        print(f"exported predictions -> {args.export_preds}")
 
     # Bootstrap the AUROC over the test set for an honest error bar (the model is
     # deterministic, so re-running is identical — uncertainty is sampling, not runs).

@@ -688,6 +688,59 @@ def fig_governor() -> None:
     print(f"wrote {out}")
 
 
+def fig_roc() -> None:
+    """Macro-averaged ROC curves: single vs TTA vs ensemble."""
+    path = os.path.join(REPO, "results", "tta_preds.npz")
+    if not os.path.exists(path):
+        return
+    from sklearn.metrics import auc, roc_curve
+    d = np.load(path)
+    grid = np.linspace(0, 1, 256)
+
+    def macro_roc(y_true, y_score):
+        tprs, aucs = [], []
+        for c in range(y_true.shape[1]):
+            yt, ys = y_true[:, c], y_score[:, c]
+            if yt.min() == yt.max() or np.isnan(ys).any():
+                continue
+            fpr, tpr, _ = roc_curve(yt, ys)
+            t = np.interp(grid, fpr, tpr)
+            t[0] = 0.0
+            tprs.append(t)
+            aucs.append(auc(fpr, tpr))
+        mt = np.mean(tprs, axis=0)
+        mt[-1] = 1.0
+        return mt, float(np.mean(aucs))
+
+    methods = [("Single pass", d["single"], INK2),
+               ("TTA (5 views)", d["tta"], YELLOW),
+               ("Ensemble (3 models)", d["ensemble"], AQUA)]
+
+    fig, ax = plt.subplots(figsize=(7, 6.2), facecolor=SURFACE)
+    _style(ax)
+    ax.plot([0, 1], [0, 1], color=INK2, linestyle=":", linewidth=1, zorder=1)
+    ax.annotate("chance", (0.72, 0.68), color=INK2, fontsize=9, rotation=38, rotation_mode="anchor")
+    for name, score, color in methods:
+        mt, a = macro_roc(d["labels"], score)
+        ax.plot(grid, mt, color=color, linewidth=2.4, zorder=3, label=f"{name} — AUROC {a:.3f}")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_xlabel("false-positive rate  (1 − specificity)", color=INK2, fontsize=10)
+    ax.set_ylabel("true-positive rate  (sensitivity)", color=INK2, fontsize=10)
+    ax.legend(loc="lower right", frameon=False, fontsize=10.5, labelcolor=INK)
+    ax.set_title("ROC — single vs TTA vs ensemble\nmacro-averaged over 14 pathologies, ChestMNIST (2000 images)",
+                 color=INK, fontsize=12.5, fontweight="bold", loc="left")
+    ax.set_aspect("equal", adjustable="box")
+    ax.annotate("curves nearly overlap — the ensemble edges slightly higher (see the +0.022 AUROC); "
+                "naive TTA sits on top of single-pass.",
+                (0.0, -0.13), xycoords="axes fraction", color=INK2, fontsize=8.5)
+    fig.tight_layout()
+    out = os.path.join(FIG, "roc_curves.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE, bbox_inches="tight")
+    print(f"wrote {out}")
+
+
 def fig_tta_illustration() -> None:
     """Visual: TTA (one model, N augmented views of one image) vs Ensemble (N models,
     one unmodified image)."""
@@ -818,6 +871,7 @@ def main() -> None:
     fig_serving()
     fig_governor()
     fig_tta_illustration()
+    fig_roc()
     fig_tta()
     fig_cost()
 
