@@ -622,6 +622,69 @@ def fig_serving() -> None:
     print(f"wrote {out}")
 
 
+def fig_governor() -> None:
+    """Energy-vs-SLA tradeoff + the adaptive governor tracking load over time."""
+    path = os.path.join(REPO, "results", "governor_bench.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        d = json.load(f)
+    res = {r["policy"]: r for r in d["results"]}
+    color = {"always-MAXN": RED, "always-25W": AQUA, "adaptive": VIOLET}
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(12, 4.8), facecolor=SURFACE,
+                                 gridspec_kw={"width_ratios": [1, 1.25]})
+
+    # --- Panel A: the tradeoff frontier (energy per image vs SLA violations) ---
+    _style(a1)
+    for name, r in res.items():
+        a1.scatter([r["sla_violation_pct"]], [r["j_per_img"] * 1000], s=170,
+                   color=color[name], zorder=4, edgecolor=SURFACE, linewidth=1.5)
+        a1.annotate(f"{name}\n{r['j_per_img']*1000:.1f} mJ/img · {r['sla_violation_pct']:.0f}% miss",
+                    (r["sla_violation_pct"], r["j_per_img"] * 1000),
+                    textcoords="offset points", xytext=(9, 6), color=INK, fontsize=9)
+    a1.set_xlabel("SLA violations (%)  →  worse", color=INK2, fontsize=10)
+    a1.set_ylabel("energy per image (mJ)  →  worse", color=INK2, fontsize=10)
+    a1.set_title("The energy ↔ SLA tradeoff", color=INK, fontsize=12,
+                 fontweight="bold", loc="left")
+    a1.margins(0.25)
+
+    # --- Panel B: offered load over time, background tinted by the mode the
+    #     governor picked (green=15W, yellow=25W, red=MAXN) ---
+    _style(a2)
+    prof = d["profile"]
+    t, load = [0], [prof[0][1]]
+    for dur, rps in prof:
+        t.append(t[-1] + dur)
+        load.append(rps)
+    total_t = t[-1]
+    mode_col = {0: "#008300", 1: YELLOW, 2: RED}
+    tl = res["adaptive"].get("mode_timeline", [])
+    for (t0, m0, _), (t1, _, _) in zip(tl, tl[1:] + [(total_t, tl[-1][1], 0)]):
+        a2.axvspan(t0, min(t1, total_t), color=mode_col[m0], alpha=0.16, zorder=1, lw=0)
+    a2.step(t, load, where="post", color=INK, linewidth=1.8, zorder=3)
+    a2.set_ylabel("offered load (req/s)", color=INK2, fontsize=10)
+    a2.set_xlabel("time (s)  —  background = governor's power mode", color=INK2, fontsize=9.5)
+    a2.set_ylim(0, max(load) * 1.15)
+    a2.set_xlim(0, total_t)
+    handles = [plt.Line2D([0], [0], marker="s", ls="", color=mode_col[m],
+                          label=lab, markersize=9, alpha=0.5)
+               for m, lab in [(0, "15W"), (1, "25W"), (2, "MAXN")]]
+    a2.legend(handles=handles, frameon=False, fontsize=8.5, loc="upper right",
+              labelcolor=INK, ncol=3, columnspacing=1.0)
+    a2.set_title("Governor tracks the load (up fast, down lazy)", color=INK,
+                 fontsize=12, fontweight="bold", loc="left")
+
+    fig.suptitle("Energy-adaptive governor: holds the SLA better than static-25W, "
+                 "at less energy than always-MAXN", color=INK, fontsize=12.5,
+                 fontweight="bold", x=0.02, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    out = os.path.join(FIG, "governor.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    print(f"wrote {out}")
+
+
 def fig_cost() -> None:
     """Cumulative cost: one-time $249 edge box vs a recurring cloud GPU.
 
@@ -684,6 +747,7 @@ def main() -> None:
     fig_power_modes()
     fig_endurance()
     fig_serving()
+    fig_governor()
     fig_tta()
     fig_cost()
 

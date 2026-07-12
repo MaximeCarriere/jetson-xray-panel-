@@ -100,6 +100,21 @@ class PowerLogger:
         if self._thread:
             self._thread.join(timeout=2)
 
+    def energy_joules(self, t_start: float | None = None, t_end: float | None = None) -> float:
+        """Integrate total board power (VDD_IN) over [t_start, t_end] -> Joules.
+        Trapezoidal over the samples (energy = mean-power × elapsed)."""
+        win = [
+            s for s in self.samples
+            if s.vdd_in_mw is not None
+            and (t_start is None or s.t >= t_start) and (t_end is None or s.t <= t_end)
+        ]
+        if len(win) < 2:
+            return 0.0
+        e = 0.0
+        for a, b in zip(win, win[1:]):
+            e += (a.vdd_in_mw + b.vdd_in_mw) / 2 / 1000.0 * (b.t - a.t)   # W·s = J
+        return e
+
     def latest(self) -> dict:
         """Most recent sample as plain values, for live readouts (None if no data)."""
         if not self.samples:

@@ -97,12 +97,14 @@ class Server:
             name: DynamicBatcher(name, path, max_batch, max_delay_ms)
             for name, path in specs
         }
+        self.submitted = 0                     # total requests (governor reads the rate)
 
     def start(self):
         for b in self.batchers.values():
             b.start()
 
     def submit(self, model: str, job: dict):
+        self.submitted += 1                    # GIL-atomic; a live-load signal
         self.batchers[model].submit(job)
 
     def drain(self, timeout=15.0):
