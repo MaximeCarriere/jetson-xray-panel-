@@ -31,10 +31,16 @@ batching gave DenseNet an 8× jump in XP1 — batching fills those idle cycles; 
 (Aside: nearly all published chest-disease models are DenseNet-121 — CheXNet made it
 the standard — so ResNet-50 is the only distinct architecture with real chest weights.)
 
-## Run (uses XP2's orchestrator with --panel)
+## Run
 ```bash
-setsid bash ../xp02_concurrency/run_concurrent.sh --repeats 3 --duration 8 \
-    --panel "resnet50-res512-all,densenet121-res224-nih,densenet121-res224-chex,densenet121-res224-pc"
-# the standalone latency/GPU-util comparison behind the counter-intuitive result:
-~/xray-venv/bin/python probe_standalone.py
+setsid bash run_panel.sh                 # the heterogeneous panel (3 runs)
+~/xray-venv/bin/python probe_standalone.py   # standalone latency + GPU-util comparison
 ```
+
+## Files
+- `run_panel.sh` — runnable entry point for the panel. **The panel itself is a
+  *config* of XP2's concurrency engine** (`benchmark_concurrent.py --panel "<models>"`),
+  not a new algorithm — so this is a thin wrapper, not a reimplementation. That's why
+  XP4 has no core runner of its own (same for XP3, which is XP2 `--batch`).
+- `probe_standalone.py` — the per-model batch-1 latency + GPU-utilisation measurement
+  behind the "bigger model is faster" result.
