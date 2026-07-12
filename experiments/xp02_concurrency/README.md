@@ -1,8 +1,15 @@
 # XP2 — Concurrency (multiprocessing + CUDA MPS) & the memory wall
 
-Run **N models at once**, one process each, under CUDA MPS. This is the heart of
-the project: a multi-disease *panel* uses different models that can't be batched
-together, so concurrency is the only way to serve them at once.
+Run **N model instances at once**, one process each, under CUDA MPS, and measure how
+throughput, latency, and power scale — the alternative to batching when you can't fuse
+work into one forward pass.
+
+> Scope note: these are N copies of the **same** model (DenseNet-121). We originally
+> also ran a "different models" case using different-dataset DenseNet variants, but
+> those aren't genuinely different models — same architecture, same 14 diseases — and
+> they measured *identically* to same-model concurrency (the GPU does the same work),
+> so they're dropped here. Genuinely different **architectures** are a separate thing
+> (XP4). The systems behaviour below is model-agnostic.
 
 ## Result (mean over 3 runs, ±1 SE)
 | N concurrent | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
@@ -14,15 +21,35 @@ together, so concurrency is the only way to serve them at once.
 - Real but **sublinear**; **saturates at N≈6** (~100 img/s, 5×). N=7 adds latency, no gain.
 - **N=8 hits a memory wall** — 8 per-process CUDA contexts (~1 GB each) exceed the
   8 GB board and thrash. The ceiling is per-process *context* memory, not weights.
-- Same-model ≈ different-model throughput (the GPU does the same work) — but only the
-  different-model panel *needs* concurrency.
+- **Concurrency loses to batching** (see below): at 4-way, batch-4 = 80 img/s @ 11 W,
+  but 4 concurrent = 74 img/s @ 13.7 W. So you only reach for concurrency when the
+  work genuinely *can't* be batched (different weights).
 
 ![throughput scaling](../../results/figures/throughput_scaling.png)
 ![power and efficiency](../../results/figures/power_efficiency.png)
 
+## Why concurrency draws more power than batching
+
+Two effects. **(1)** Power rises with N because more of the GPU lights up — ~8 W at
+17 % utilisation (sequential) up to ~16 W at ~78 % (six concurrent). **(2)** At the
+*same* degree of parallelism, concurrency draws **more** power than batching for
+*less* throughput, because:
+
+- **Redundant weight traffic (the main reason):** batch-8 reads the DenseNet weights
+  from DRAM **once** and applies them to all 8 images; 8 concurrent processes each have
+  their own CUDA context and re-read the weights independently → **~N× the weight
+  memory traffic.** DRAM access is power-hungry, so moving the same weights N times
+  burns extra watts.
+- **Lost kernel fusion + overhead:** batching runs one large efficient kernel;
+  concurrency runs N separate kernel streams the scheduler interleaves, with N× the
+  launch/scheduling overhead.
+
+Batching amortises the weight read and fuses the math; concurrency replicates that work
+N times — hence more watts for fewer images.
+
 ## Run
 ```bash
-setsid bash run_concurrent.sh --repeats 3 --duration 8 --same 2,4 --diff 2,4 --ramp 3,5,6
+setsid bash run_concurrent.sh --repeats 3 --duration 8 --same 2,4,5 --ramp 3,6,7
 ```
 
 ## Files

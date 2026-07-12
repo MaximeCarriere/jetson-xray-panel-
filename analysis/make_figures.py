@@ -78,8 +78,7 @@ def _by_config(recs: list[dict]) -> dict[str, dict]:
 # batch size for batched, #concurrent models for concurrent, 1 for sequential.
 SERIES = {
     "batched":         ("Batched (1 model)", BLUE),
-    "concurrent_same": ("Concurrent, same model", AQUA),
-    "concurrent_diff": ("Concurrent, different models (panel)", YELLOW),
+    "concurrent_same": ("Concurrent (N models)", AQUA),
 }
 
 
@@ -97,7 +96,9 @@ def _series(cfg: dict) -> dict[str, list[tuple]]:
         elif c["regime"] == "concurrent":
             if c["batch_size"] != 1:      # concurrent-batched handled separately
                 continue
-            key = "concurrent_diff" if c["case"] == "diff" else "concurrent_same"
+            if c["case"] == "diff":       # different-dataset variants ≈ same-model — drop
+                continue
+            key = "concurrent_same"
             x = c["n_models"]
         else:
             continue
@@ -245,14 +246,14 @@ def fig_saturation(cfg: dict) -> None:
         ("Batched (1 model)", BLUE,
          collect(lambda c: c["regime"] == "batched", lambda c: c["batch_size"])),
         ("Concurrent, batch 1", AQUA,
-         collect(lambda c: c["regime"] == "concurrent" and c["batch_size"] == 1,
-                 lambda c: c["n_models"])),
+         collect(lambda c: c["regime"] == "concurrent" and c["batch_size"] == 1
+                 and c["case"] != "diff", lambda c: c["n_models"])),
         ("Concurrent + batch 2", YELLOW,
-         collect(lambda c: c["regime"] == "concurrent" and c["batch_size"] == 2,
-                 lambda c: c["n_models"] * 2)),
+         collect(lambda c: c["regime"] == "concurrent" and c["batch_size"] == 2
+                 and c["case"] != "diff", lambda c: c["n_models"] * 2)),
         ("Concurrent + batch 4", VIOLET,
-         collect(lambda c: c["regime"] == "concurrent" and c["batch_size"] == 4,
-                 lambda c: c["n_models"] * 4)),
+         collect(lambda c: c["regime"] == "concurrent" and c["batch_size"] == 4
+                 and c["case"] != "diff", lambda c: c["n_models"] * 4)),
     ]
     ceiling = max(c["throughput"][0] for c in cfg.values())
 
