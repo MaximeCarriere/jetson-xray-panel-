@@ -4,6 +4,26 @@ Spend the spare GPU capacity on *reliability* instead of speed. Evaluated on
 **ChestMNIST-224** (NIH, 2000 labeled test images, auto-downloaded — no Kaggle),
 macro-AUROC over 14 pathologies.
 
+## What are TTA and Ensemble?
+
+Two different ways to average away individual-prediction errors — they vary *different*
+things:
+
+- **TTA (Test-Time Augmentation):** **one model**, and **the same image shown in several
+  mildly-augmented views** (small rotations, contrast/brightness shifts). The model
+  classifies each view, and the predictions are averaged. Idea: averaging over
+  slightly-different *valid* views cancels single-pass noise. *(It varies the **image**.)*
+- **Ensemble:** the **same, unmodified image** fed to **several different models** (here,
+  DenseNet-121s trained on different datasets — NIH, all, MIMIC). Their predictions are
+  averaged. Idea: models trained differently make different mistakes, which cancel.
+  *(It varies the **model**.)*
+
+The picture below is generated from a real ChestMNIST image (`illustrate.py`) — the top
+row is literally the same X-ray in 5 augmented views (one model); the bottom is one
+image through three models:
+
+![TTA vs Ensemble](../../results/figures/tta_vs_ensemble.png)
+
 ## Result
 | Method | AUROC (± bootstrap SE) | Δ |
 |---|---:|---:|

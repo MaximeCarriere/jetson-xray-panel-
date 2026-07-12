@@ -688,6 +688,72 @@ def fig_governor() -> None:
     print(f"wrote {out}")
 
 
+def fig_tta_illustration() -> None:
+    """Visual: TTA (one model, N augmented views of one image) vs Ensemble (N models,
+    one unmodified image)."""
+    import base64
+    import io
+    path = os.path.join(REPO, "results", "tta_views.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        d = json.load(f)
+
+    def dec(uri):
+        return plt.imread(io.BytesIO(base64.b64decode(uri.split(",", 1)[1])), format="png")
+
+    orig = dec(d["original"])
+    views = [(dec(v["img"]), v["name"]) for v in d["tta_views"]]
+    box = dict(boxstyle="round,pad=0.5", fc=SURFACE, ec="#b9c6c6", lw=1.2)
+
+    fig = plt.figure(figsize=(13, 7), facecolor=SURFACE)
+
+    def add_img(arr, x, y, w, h, caption):
+        ax = fig.add_axes([x, y, w, h])
+        ax.imshow(arr, cmap="gray")
+        ax.set_xticks([]); ax.set_yticks([])
+        for s in ax.spines.values():
+            s.set_color("#b9c6c6")
+        fig.text(x + w / 2, y - 0.015, caption, ha="center", va="top",
+                 fontsize=8.5, color=INK2, family="monospace")
+
+    tw, th = 0.115, 0.235
+    # --- TTA (top) ---
+    fig.text(0.02, 0.965, "TTA — Test-Time Augmentation", fontsize=14,
+             fontweight="bold", color=INK)
+    fig.text(0.02, 0.925, "ONE model  ·  ONE image  ·  5 augmented views  →  average the predictions",
+             fontsize=10.5, color=INK2)
+    ty = 0.60
+    for i, (arr, name) in enumerate(views):
+        add_img(arr, 0.03 + i * 0.125, ty, tw, th, name)
+    fig.text(0.665, ty + th / 2, "→", fontsize=30, color=AQUA, ha="center", va="center")
+    fig.text(0.79, ty + th / 2, "DenseNet-121\n(same model)", ha="center", va="center",
+             fontsize=10.5, color=INK, bbox=box)
+    fig.text(0.925, ty + th / 2, "→ average\n= prediction", ha="center", va="center",
+             fontsize=10.5, color=INK, fontweight="bold")
+
+    fig.add_artist(plt.Line2D([0.02, 0.98], [0.50, 0.50], color="#dfe6e5", lw=1.2))
+
+    # --- Ensemble (bottom) ---
+    fig.text(0.02, 0.44, "Ensemble", fontsize=14, fontweight="bold", color=INK)
+    fig.text(0.02, 0.40, "THREE different models  ·  the SAME unmodified image  →  average the predictions",
+             fontsize=10.5, color=INK2)
+    ey = 0.08
+    add_img(orig, 0.03, ey, tw, th, "same image\n(unmodified)")
+    fig.text(0.235, ey + th / 2, "→", fontsize=30, color=RED, ha="center", va="center")
+    for m, mx in zip(d["ensemble_models"], [0.40, 0.58, 0.76]):
+        short = m.split("(")[1].rstrip(")") if "(" in m else m
+        fig.text(mx, ey + th / 2, f"DenseNet\n({short})", ha="center", va="center",
+                 fontsize=10, color=INK, bbox=box)
+    fig.text(0.925, ey + th / 2, "→ average\n= prediction", ha="center", va="center",
+             fontsize=10.5, color=INK, fontweight="bold")
+
+    out = os.path.join(FIG, "tta_vs_ensemble.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    print(f"wrote {out}")
+
+
 def fig_cost() -> None:
     """Cumulative cost: one-time $249 edge box vs a recurring cloud GPU.
 
@@ -751,6 +817,7 @@ def main() -> None:
     fig_endurance()
     fig_serving()
     fig_governor()
+    fig_tta_illustration()
     fig_tta()
     fig_cost()
 
