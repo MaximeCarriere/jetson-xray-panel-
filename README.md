@@ -47,6 +47,7 @@ Each folder is one self-contained experiment with its own README, code, and resu
 | [XP8](experiments/xp08_robustness/) | TTA / ensemble | ensemble +0.022 AUROC ~free; naive TTA doesn't help |
 | [XP9](experiments/xp09_power_modes/) | Power-envelope sweep | MAXN for peak; 25 W for best efficiency |
 | [XP10](experiments/xp10_endurance/) | Thermal endurance | −0.2% over 20 min, 71 °C — no throttling |
+| [XP11](experiments/xp11_serving/) | Serving layer + load | dynamic batching; SLA-safe capacity ~482 req/s (raw 510) |
 | [demos](demos/) | Live demos | PyTorch (75 img/s) · TensorRT (398 img/s) · browser replay |
 
 ## The clinic story

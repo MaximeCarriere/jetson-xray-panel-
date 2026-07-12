@@ -581,6 +581,47 @@ def fig_tta() -> None:
     print(f"wrote {out}")
 
 
+def fig_serving() -> None:
+    """Latency-vs-load: the serving hockey stick and the SLA-bounded capacity."""
+    path = os.path.join(REPO, "results", "serving_bench.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        d = json.load(f)
+    rows = d["rows"]
+    x = [r["rps_achieved"] for r in rows]
+    sla = d["sla_p99_ms"]
+    cap = d["sla_bounded_rps"]
+
+    fig, ax = plt.subplots(figsize=(9, 5.4), facecolor=SURFACE)
+    _style(ax)
+    for key, label, color in [("p50_ms", "p50", BLUE), ("p95_ms", "p95", AQUA),
+                              ("p99_ms", "p99 (tail)", RED)]:
+        ax.plot(x, [r[key] for r in rows], color=color, linewidth=2, marker="o",
+                markersize=5, zorder=3, label=label)
+    ax.set_yscale("log")
+    ax.axhline(sla, color=INK2, linestyle="--", linewidth=1.2, zorder=2)
+    ax.annotate(f"SLA: p99 < {sla:.0f} ms", (x[0], sla), textcoords="offset points",
+                xytext=(4, 4), color=INK2, fontsize=9, va="bottom")
+    ax.axvline(cap, color=YELLOW, linestyle=":", linewidth=1.5, zorder=2)
+    ax.annotate(f"capacity ≈ {cap:.0f} req/s", (cap, ax.get_ylim()[1]),
+                textcoords="offset points", xytext=(-6, -14), color=INK, fontsize=9.5,
+                ha="right", fontweight="bold")
+    ax.legend(frameon=False, fontsize=10, loc="upper left", labelcolor=INK)
+    ax.set_xlabel("offered load (requests / second)", color=INK2, fontsize=10)
+    ax.set_ylabel("end-to-end latency (ms, log scale)", color=INK2, fontsize=10)
+    ax.set_title("Serving under load: tail latency explodes past ~500 req/s",
+                 color=INK, fontsize=12.5, fontweight="bold", loc="left")
+    ax.annotate("dynamic batching (mean batch 5.7). Raw engine does 510 img/s, but the "
+                "SLA-safe serving capacity is lower — you can't run a queue at 100%.",
+                (0.0, -0.15), xycoords="axes fraction", color=INK2, fontsize=8.5)
+    fig.tight_layout()
+    out = os.path.join(FIG, "serving_latency.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    print(f"wrote {out}")
+
+
 def fig_cost() -> None:
     """Cumulative cost: one-time $249 edge box vs a recurring cloud GPU.
 
@@ -642,6 +683,7 @@ def main() -> None:
     fig_streams()
     fig_power_modes()
     fig_endurance()
+    fig_serving()
     fig_tta()
     fig_cost()
 

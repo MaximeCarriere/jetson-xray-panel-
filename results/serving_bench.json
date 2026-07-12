@@ -1,0 +1,124 @@
+{
+  "max_batch": 8,
+  "max_delay_ms": 5.0,
+  "sla_p99_ms": 100.0,
+  "sla_bounded_rps": 481.8,
+  "batch_stats": {
+    "nih": {
+      "batches": 6354,
+      "mean_batch": 5.68
+    }
+  },
+  "rows": [
+    {
+      "rps_target": 25,
+      "rps_achieved": 25.2,
+      "p50_ms": 9.57,
+      "p95_ms": 11.95,
+      "p99_ms": 13.95,
+      "mean_ms": 9.86,
+      "n": 202,
+      "sla_ok": true
+    },
+    {
+      "rps_target": 50,
+      "rps_achieved": 53.9,
+      "p50_ms": 9.57,
+      "p95_ms": 14.2,
+      "p99_ms": 16.71,
+      "mean_ms": 10.43,
+      "n": 431,
+      "sla_ok": true
+    },
+    {
+      "rps_target": 100,
+      "rps_achieved": 98.9,
+      "p50_ms": 11.04,
+      "p95_ms": 17.17,
+      "p99_ms": 20.31,
+      "mean_ms": 11.54,
+      "n": 791,
+      "sla_ok": true
+    },
+    {
+      "rps_target": 200,
+      "rps_achieved": 196.4,
+      "p50_ms": 14.14,
+      "p95_ms": 23.32,
+      "p99_ms": 27.4,
+      "mean_ms": 14.68,
+      "n": 1571,
+      "sla_ok": true
+    },
+    {
+      "rps_target": 300,
+      "rps_achieved": 292.0,
+      "p50_ms": 18.47,
+      "p95_ms": 29.29,
+      "p99_ms": 33.44,
+      "mean_ms": 18.97,
+      "n": 2336,
+      "sla_ok": true
+    },
+    {
+      "rps_target": 400,
+      "rps_achieved": 390.0,
+      "p50_ms": 23.34,
+      "p95_ms": 33.68,
+      "p99_ms": 38.74,
+      "mean_ms": 23.47,
+      "n": 3120,
+      "sla_ok": true
+    },
+    {
+      "rps_target": 450,
+      "rps_achieved": 437.4,
+      "p50_ms": 26.2,
+      "p95_ms": 40.14,
+      "p99_ms": 46.67,
+      "mean_ms": 26.66,
+      "n": 3499,
+      "sla_ok": true
+    },
+    {
+      "rps_target": 500,
+      "rps_achieved": 481.8,
+      "p50_ms": 43.71,
+      "p95_ms": 86.86,
+      "p99_ms": 98.63,
+      "mean_ms": 47.61,
+      "n": 3854,
+      "sla_ok": true
+    },
+    {
+      "rps_target": 550,
+      "rps_achieved": 531.6,
+      "p50_ms": 475.08,
+      "p95_ms": 651.23,
+      "p99_ms": 673.12,
+      "mean_ms": 457.78,
+      "n": 4253,
+      "sla_ok": false
+    },
+    {
+      "rps_target": 600,
+      "rps_achieved": 582.1,
+      "p50_ms": 1027.16,
+      "p95_ms": 1520.85,
+      "p99_ms": 1605.83,
+      "mean_ms": 987.28,
+      "n": 4657,
+      "sla_ok": false
+    },
+    {
+      "rps_target": 700,
+      "rps_achieved": 685.5,
+      "p50_ms": 2054.91,
+      "p95_ms": 3331.83,
+      "p99_ms": 3457.63,
+      "mean_ms": 2040.71,
+      "n": 5484,
+      "sla_ok": false
+    }
+  ]
+}
