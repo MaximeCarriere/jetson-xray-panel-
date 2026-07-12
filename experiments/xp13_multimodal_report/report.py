@@ -16,6 +16,9 @@ so the reader can see what the vision model got right/wrong.
 from __future__ import annotations
 
 import argparse
+import base64
+import io
+import json
 import os
 import sys
 import time
@@ -64,10 +67,22 @@ def build_messages(probs: dict):
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _img_datauri(img255: np.ndarray) -> str:
+    """Grayscale uint8 -> contrast-stretched PNG data URI for display."""
+    from PIL import Image
+    a = img255.astype(np.float32)
+    lo, hi = np.percentile(a, 2), np.percentile(a, 98)
+    a = np.clip((a - lo) / max(1e-3, hi - lo) * 255, 0, 255).astype(np.uint8)
+    buf = io.BytesIO()
+    Image.fromarray(a).save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=4, help="sample images to report on")
     ap.add_argument("--max-tokens", type=int, default=120)
+    ap.add_argument("--export", default=None, help="write cases (with images) to JSON")
     args = ap.parse_args()
 
     from llama_cpp import Llama
@@ -87,6 +102,7 @@ def main():
     maxprob = np.array([max(classify(engine, cmap, ds.imgs[i]).values()) for i in range(scan)])
     idxs = list(np.argsort(maxprob)[::-1][:args.n])
 
+    cases = []
     for k, i in enumerate(idxs):
         img = ds.imgs[i]
         truth = [cl.MEDMNIST_LABELS[j] for j in range(14) if ds.labels[i][j] == 1]
@@ -109,6 +125,26 @@ def main():
         print(f"  IMPRESSION (local LLM): {text}")
         print(f"  [classify {t_classify:.1f} ms · generate {t_gen:.1f} s "
               f"· {n_tok} tok · {n_tok/t_gen:.1f} tok/s]\n", flush=True)
+
+        if args.export:
+            cases.append({
+                "id": int(i),
+                "image": _img_datauri(img),
+                "ground_truth": [NICE.get(t, t) for t in truth],
+                "probs": {NICE.get(k2, k2): round(v, 3) for k2, v in probs.items()},
+                "impression": text,
+                "classify_ms": round(t_classify, 1),
+                "generate_s": round(t_gen, 2),
+                "tokens": int(n_tok),
+                "tok_s": round(n_tok / t_gen, 1),
+            })
+
+    if args.export:
+        with open(args.export, "w") as f:
+            json.dump({"model_vision": "densenet121-res224-nih (TensorRT FP16)",
+                       "model_language": "Qwen2.5-3B Q4 (llama.cpp, GPU)",
+                       "cases": cases}, f)
+        print(f"exported {len(cases)} cases -> {args.export}")
 
 
 if __name__ == "__main__":

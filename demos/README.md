@@ -24,6 +24,15 @@ The same panel on PyTorch (4 clinicians, different-dataset DenseNets + ResNet-50
 ~/xray-venv/bin/python demo_panel.py --seconds 25
 ```
 
+## `report_station.html` — on-device multimodal reading station (XP13)
+
+A self-contained, interactive artifact: real chest X-rays (captured from the board)
+shown in a clinical viewer, with the TensorRT vision model's 14 pathology
+probabilities and the **local LLM's written impression** for each case, plus live
+telemetry (classify ms · tokens/s). Flip through 6 real cases; the impression types
+out to evoke the on-device generation. Built from `results/report_cases.json`
+(exported via `experiments/xp13_multimodal_report/report.py --export`).
+
 ## `demo_replay.html` — shareable browser replay
 
 A self-contained, theme-aware HTML telemetry monitor that **replays a real 25-second
