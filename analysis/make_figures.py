@@ -251,7 +251,7 @@ def fig_saturation(cfg: dict) -> None:
         ("Concurrent + batch 2", YELLOW,
          collect(lambda c: c["regime"] == "concurrent" and c["batch_size"] == 2
                  and c["case"] != "diff", lambda c: c["n_models"] * 2)),
-        ("Concurrent + batch 4", VIOLET,
+        ("Concurrent + batch 4", RED,
          collect(lambda c: c["regime"] == "concurrent" and c["batch_size"] == 4
                  and c["case"] != "diff", lambda c: c["n_models"] * 4)),
     ]
@@ -293,7 +293,7 @@ def fig_regime_peak(cfg: dict) -> None:
         if not cs:
             return None
         c = max(cs, key=lambda c: c["throughput"][0])
-        return c["throughput"][0], c["gpu_util"][0], c["n_models"], c["batch_size"]
+        return c["throughput"][0], c["gpu_util"][0], c["throughput"][1]  # mean, gpu%, SE
 
     rows = [
         ("Sequential\n(1 model, 1 image)", best(lambda c: c["regime"] == "sequential"), INK2),
@@ -301,20 +301,22 @@ def fig_regime_peak(cfg: dict) -> None:
             lambda c: c["regime"] == "concurrent" and c["batch_size"] == 1), AQUA),
         ("Batched only\n(1 model × 8)", best(lambda c: c["regime"] == "batched"), BLUE),
         ("Concurrent + batched\n(4 models × 4)", best(
-            lambda c: c["regime"] == "concurrent" and c["batch_size"] == 4), VIOLET),
+            lambda c: c["regime"] == "concurrent" and c["batch_size"] == 4), RED),
     ]
     rows = [r for r in rows if r[1]]
     labels = [r[0] for r in rows]
     vals = [r[1][0] for r in rows]
     utils_pct = [r[1][1] for r in rows]
+    ses = [r[1][2] for r in rows]
     colors = [r[2] for r in rows]
     y = np.arange(len(rows))
 
     fig, ax = plt.subplots(figsize=(9, 4.6), facecolor=SURFACE)
     _style(ax)
-    ax.barh(y, vals, color=colors, height=0.62, zorder=3)
-    for yi, v, u in zip(y, vals, utils_pct):
-        ax.annotate(f"{v:.0f} img/s   ·   GPU {u:.0f}%", (v, yi),
+    ax.barh(y, vals, color=colors, height=0.62, zorder=3,
+            xerr=ses, ecolor=INK, capsize=4, error_kw={"zorder": 4})
+    for yi, v, u, s in zip(y, vals, utils_pct, ses):
+        ax.annotate(f"{v:.0f} ±{s:.1f} img/s   ·   GPU {u:.0f}%", (v + s, yi),
                     xytext=(6, 0), textcoords="offset points", va="center",
                     color=INK, fontsize=10, fontweight="bold")
     ax.set_yticks(y)
