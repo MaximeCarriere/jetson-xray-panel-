@@ -22,13 +22,13 @@ and concurrency — neither reaches it alone (batching plateaus ~160, pure concu
 ![reaching the ceiling](../../results/figures/saturation.png)
 ![peak by strategy](../../results/figures/regime_peak.png)
 
-## Run (uses XP2's orchestrator with --batch; 3 repeats)
+## Run
 ```bash
-setsid bash ../xp02_concurrency/run_concurrent.sh --repeats 3 --duration 8 \
-    --same 2,3,4 --ramp , --batch 4
-setsid bash ../xp02_concurrency/run_concurrent.sh --repeats 3 --duration 8 \
-    --same 2,4,6 --ramp , --batch 2
+setsid bash run_batched.sh     # batch-4 and batch-2 sweeps, 3 repeats each
 ```
 
 ## Files
-No new code — uses `../xp02_concurrency/benchmark_concurrent.py --batch B`.
+- `run_batched.sh` — runnable entry point. **The batched-concurrent regime is a
+  *config* of XP2's concurrency engine** (`benchmark_concurrent.py --batch B`), not a
+  new algorithm, so this is a thin wrapper rather than a reimplementation — which is
+  why XP3 has no core runner of its own (same as XP4).
