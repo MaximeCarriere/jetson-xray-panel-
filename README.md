@@ -49,6 +49,7 @@ Each folder is one self-contained experiment with its own README, code, and resu
 | [XP10](experiments/xp10_endurance/) | Thermal endurance | −0.2% over 20 min, 71 °C — no throttling |
 | [XP11](experiments/xp11_serving/) | Serving layer + load | dynamic batching; SLA-safe capacity ~482 req/s (raw 510) |
 | [XP12](experiments/xp12_energy_governor/) | Energy governor | adaptive power scaling; −3.4 % energy vs MAXN — but power mode is a weak lever |
+| [XP13](experiments/xp13_multimodal_report/) | On-device multimodal | X-ray → local LLM report; vision + language on one box, offline, ~2 s |
 | [demos](demos/) | Live demos | PyTorch (75 img/s) · TensorRT (398 img/s) · browser replay |
 
 ## The clinic story
