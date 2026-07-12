@@ -33,6 +33,11 @@ telemetry (classify ms · tokens/s). Flip through 6 real cases; the impression t
 out to evoke the on-device generation. Built from `results/report_cases.json`
 (exported via `experiments/xp13_multimodal_report/report.py --export`).
 
+![reading station](report_station.png)
+
+*Chest X-ray → TensorRT DenseNet → 14 pathology probabilities → Qwen-3B → written
+impression, all on one $249 Jetson, offline. (Ground truth shown; systems demo, not clinical.)*
+
 ## `demo_replay.html` — shareable browser replay
 
 A self-contained, theme-aware HTML telemetry monitor that **replays a real 25-second
