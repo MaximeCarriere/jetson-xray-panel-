@@ -23,6 +23,20 @@ The same box, same models, optimized step by step:
 …and every trade-off along the way is measured and reported honestly — including the
 negative results (naive TTA, the INT8 accuracy cost, the concurrency memory wall).
 
+## What it actually does — a full X-ray → LLM report, on the box, offline
+
+That optimized pipeline drives a real end-to-end capstone: a chest X-ray is classified by
+the TensorRT vision model, and a small on-device LLM writes a plain-language impression
+from the probabilities — **both models on one $249 Jetson, fully offline**
+([XP13](experiments/xp13_multimodal_report/)).
+
+![on-device chest X-ray reading station](demos/report_station.png)
+
+*Image in → 14 pathology probabilities → written impression, ~2 s per case, no cloud.
+Bars encode the wording bands (orange = likely, amber = possible, grey = unlikely).
+Systems demonstration, not a clinical tool — ground truth is shown so the model's hits and
+misses are visible.*
+
 **Reproducibility.** Every experiment was repeated and reported with error bars —
 ±1 standard error over 3 runs for throughput, ±1 bootstrap SE (1000 resamples) for
 AUROC. Accuracy reproduces **exactly** (AUROC is bit-identical run to run) and
@@ -46,7 +60,7 @@ Each folder is one self-contained experiment with its own README, code, and resu
 | [XP7](experiments/xp07_int8/) | INT8 quantization | 1035 img/s (2×) but −0.054 AUROC (7%) accuracy cost |
 | [XP8](experiments/xp08_robustness/) | TTA / ensemble | ensemble +0.022 AUROC ~free; naive TTA doesn't help |
 | [XP9](experiments/xp09_power_modes/) | Power-envelope sweep | MAXN for peak; 25 W for best efficiency |
-| [XP10](experiments/xp10_endurance/) | Thermal endurance | −0.2% over 20 min, 71 °C — no throttling |
+| [XP10](experiments/xp10_endurance/) | Thermal endurance | −0.2% over 10 min, 69 °C — no throttling |
 | [XP11](experiments/xp11_serving/) | Serving layer + load | dynamic batching; SLA-safe capacity ~482 req/s (raw 510) |
 | [XP12](experiments/xp12_energy_governor/) | Energy governor | adaptive power scaling; −3.4 % energy vs MAXN — but power mode is a weak lever |
 | [XP13](experiments/xp13_multimodal_report/) | On-device multimodal | X-ray → local LLM report; vision + language on one box, offline, ~2 s |
