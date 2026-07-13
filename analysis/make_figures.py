@@ -628,13 +628,13 @@ def fig_serving() -> None:
     ax.set_ylabel("end-to-end latency (ms, log scale)", color=INK2, fontsize=10)
     ax.set_title("Serving under load: tail latency explodes past ~500 req/s",
                  color=INK, fontsize=12.5, fontweight="bold", loc="left")
-    ax.annotate("dynamic batching (mean batch 5.7). Raw engine does 510 img/s, but the "
-                "SLA-safe serving capacity is lower — you can't run a queue at 100%.",
-                (0.0, -0.15), xycoords="axes fraction", color=INK2, fontsize=8.5)
+    ax.annotate("dynamic batching (mean batch 5.7). Raw engine does 510 img/s, but the\n"
+                "SLA-safe serving capacity is ~482 req/s — you can't run a queue at 100%.",
+                (0.0, -0.20), xycoords="axes fraction", color=INK2, fontsize=8.5)
     fig.tight_layout()
     out = os.path.join(FIG, "serving_latency.png")
     os.makedirs(FIG, exist_ok=True)
-    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    fig.savefig(out, dpi=150, facecolor=SURFACE, bbox_inches="tight")
     print(f"wrote {out}")
 
 
