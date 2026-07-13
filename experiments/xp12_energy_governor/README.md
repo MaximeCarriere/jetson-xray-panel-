@@ -32,6 +32,19 @@ Replaying the same bursty clinic-day load profile (quiet ↔ rounds ↔ peaks of
   doesn't flap. Thresholds come from the measured SLA-safe capacities: 15 W≈300, 25 W≈460,
   MAXN≈510 req/s.
 
+**Why no "always-15 W" policy?** Two reasons make it a non-starter as a static baseline:
+1. **It can't serve the load.** 15 W's SLA-safe capacity is only ~300 req/s, but the
+   clinic profile has sustained segments at **440, 450, and 290 req/s**. So always-15 W
+   would blow the SLA on essentially every non-quiet segment — a catastrophic violation
+   rate, far worse than 25 W's 22 %. It's not a trade-off point, it's a broken one.
+2. **It wouldn't even save energy.** 15 W is the *least* energy-efficient mode per image
+   (XP9: 26 vs 30 img/s/W), so it's **dominated on both axes** — worse SLA *and* worse
+   energy than 25 W. A point that loses on every dimension adds nothing to the plot.
+
+15 W *is* still in the experiment, though — the **adaptive governor drops to 15 W during
+the quiet stretches** (the green bands in the figure's right panel). We use it where it
+fits (idle periods), just not as an always-on policy where it's guaranteed to fail.
+
 ## Result
 
 | Policy | Energy/img | Avg power | p99 latency | SLA violations |
