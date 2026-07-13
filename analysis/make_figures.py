@@ -517,18 +517,29 @@ def fig_int8() -> None:
     xs = [p[1] for p in pts]
     ys = [p[2] for p in pts]
     ax.plot(xs, ys, color=INK2, linewidth=1.2, linestyle="--", zorder=2)
-    # PyTorch and FP16 sit at the same AUROC, so stagger vertically (FP16 label drops
-    # down-right into open space) to avoid the two top labels overlapping.
-    offsets = [(-8, 11), (16, -26), (12, -6)]
-    for (label, x, y, c, xe, ye), off in zip(pts, offsets):
+    # These are TWO-LINE labels, so anchor with `va` set to push the WHOLE block off the
+    # marker (not just the first line) — otherwise the second line lands on the dot/lines.
+    # PyTorch & FP16 share the same AUROC: both go above their markers, separated enough
+    # horizontally not to touch; INT8 sits clear to the right of its error bar.
+    # Labels drop the AUROC value (it's the y-axis — no need to repeat it) so each is
+    # short enough to sit in the gap between markers. Each is shifted to the RIGHT of its
+    # own vertical error bar (dx>0) and anchored above (va bottom) so no data line or
+    # error bar ever crosses the text.
+    placements = [                       # (dx, dy, ha, va)
+        (14, 12, "left", "bottom"),      # PyTorch — above, right of its error bar
+        (16, 12, "left", "bottom"),      # FP16 — above, right of its error bar
+        (16, 0, "left", "center"),       # INT8 — to the right of the red error bar
+    ]
+    for (label, x, y, c, xe, ye), (dx, dy, ha, va) in zip(pts, placements):
         ax.errorbar([x], [y], xerr=[xe], yerr=[ye], fmt="o", color=c, markersize=11,
                     zorder=4, ecolor=c, capsize=4, markeredgecolor=SURFACE, markeredgewidth=1.5)
-        ax.annotate(f"{label}\n{x:.0f} img/s · AUROC {y:.3f}", (x, y),
-                    textcoords="offset points", xytext=off, color=INK, fontsize=9.5)
+        ax.annotate(f"{label}\n{x:.0f} img/s\nAUROC {y:.3f}", (x, y),
+                    textcoords="offset points", xytext=(dx, dy), color=INK, fontsize=9.5,
+                    ha=ha, va=va)
     ax.set_xlabel("throughput — images / second (batch 8)  →  faster", color=INK2, fontsize=10)
     ax.set_ylabel("macro-AUROC  →  more accurate", color=INK2, fontsize=10)
-    ax.set_xlim(0, max(xs) * 1.35)
-    ax.set_ylim(min(ys) - 0.015, max(ys) + 0.012)
+    ax.set_xlim(0, max(xs) * 1.45)
+    ax.set_ylim(min(ys) - 0.015, max(ys) + 0.028)
     ax.set_title("INT8 quantization: 2× faster, but a real accuracy cost",
                  color=INK, fontsize=12.5, fontweight="bold", loc="left")
     ax.annotate("FP16 is free (same accuracy as PyTorch); INT8 doubles throughput "

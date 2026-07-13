@@ -16,6 +16,12 @@ INT8 doubles throughput but costs **0.054 AUROC (7%)**. FP16 remains the safe de
 AUROC re-verified on 2000 labeled ChestMNIST images; the point-estimate drop (0.054)
 is ~3.6× the per-estimate SE, though a paired test would give tighter significance.
 
+> **Why this FP16 says 512 img/s but [XP6](../xp06_tensorrt_fp16/) says 508:** they're
+> two different spaced runs. This 511.9 is FP16 re-measured on the **same `densenet-nih`
+> engine used for INT8 calibration**, so it's the exact apples-to-apples baseline for the
+> INT8 comparison here. XP6's headline 507.7 is the FP16 sweep on the `densenet-…-all`
+> variant. The ~0.8 % gap is run-to-run variance + model variant, not a real difference.
+
 ![int8 trade-off](../../results/figures/int8_speed_accuracy.png)
 
 ## Run
