@@ -67,11 +67,32 @@ Read across, comparing each policy to **always-MAXN** as the baseline:
 - **adaptive** lands *between* them: **−3.4 % energy** and only **9.1 %** misses — better SLA
   than static-25 W, less energy than always-MAXN. It's a real, sensible middle point.
 
-The **left panel** of the figure plots exactly this: energy (down = cheaper) vs SLA misses
-(left = better). The three points form a **trade-off frontier** — you buy lower energy with
-worse SLA, and the governor sits on a good part of that curve. The **right panel** shows the
-governor *working*: the black line is the live load, and the background colour is the mode
-it picked — green (15 W) when quiet, red (MAXN) the instant a burst arrives.
+**What exactly is a "miss"?** A miss = **one X-ray whose answer came back slower than the
+100 ms target**. Concretely the code measures `mean(latency > 100 ms)` over every request,
+so "22 % SLA violations" means *22 % of the individual requests took longer than 100 ms to
+be answered*. The request isn't dropped or lost — it's still served, just too slowly to
+count as on-time. (It's a **latency** miss, not a lost request.)
+
+### How to read the two panels
+
+**Left panel — the trade-off.** Energy per image on the y-axis (down = cheaper), SLA misses
+on the x-axis (left = better). The three points form a **trade-off frontier**: you buy lower
+energy with worse SLA. always-MAXN is top-left (0 % miss, most energy); always-25 W is
+bottom-right (cheapest, but 22 % miss); the governor sits in between — a genuinely good
+compromise point.
+
+**Right panel — the governor working over time.** The **black line is the offered load**
+(req/s) as the clinic day plays out: quiet (~60) → burst (440) → lull (120) → burst (450) →
+quiet (70) → medium (290). The **background colour is the power mode the governor chose** at
+that moment — **green = 15 W, yellow = 25 W, red = MAXN** (see legend). Read them together:
+- when the black line is **low**, the background is **green** (15 W) — saving power while
+  quiet;
+- the instant the line **jumps to a burst**, the background turns **red** (MAXN) about
+  1–2 s later — that small delay is the **"up fast"** reaction (and the ~9 % misses happen
+  in that catch-up window);
+- when the line **drops**, the background stays red/yellow for a few seconds before going
+  green again — that's the **"down lazy"** dwell (hysteresis), so it doesn't flap on every
+  wiggle.
 
 ## The honest bottom line (why this is a "meh, but instructive" result)
 

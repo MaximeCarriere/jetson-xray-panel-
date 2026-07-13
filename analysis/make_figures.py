@@ -669,19 +669,22 @@ def fig_governor() -> None:
     #     governor picked (green=15W, yellow=25W, red=MAXN) ---
     _style(a2)
     prof = d["profile"]
-    t, load = [0], [prof[0][1]]
+    # Draw the load as an explicit horizontal segment per profile step, at its true time
+    # window, so it lines up with the mode bands (which are stamped in real run time).
+    xs, ys, tc = [], [], 0
     for dur, rps in prof:
-        t.append(t[-1] + dur)
-        load.append(rps)
-    total_t = t[-1]
+        xs += [tc, tc + dur]
+        ys += [rps, rps]
+        tc += dur
+    total_t = tc
     mode_col = {0: "#008300", 1: YELLOW, 2: RED}
     tl = res["adaptive"].get("mode_timeline", [])
     for (t0, m0, _), (t1, _, _) in zip(tl, tl[1:] + [(total_t, tl[-1][1], 0)]):
-        a2.axvspan(t0, min(t1, total_t), color=mode_col[m0], alpha=0.16, zorder=1, lw=0)
-    a2.step(t, load, where="post", color=INK, linewidth=1.8, zorder=3)
+        a2.axvspan(t0, min(t1, total_t), color=mode_col[m0], alpha=0.18, zorder=1, lw=0)
+    a2.plot(xs, ys, color=INK, linewidth=2.0, zorder=3)
     a2.set_ylabel("offered load (req/s)", color=INK2, fontsize=10)
     a2.set_xlabel("time (s)  —  background = governor's power mode", color=INK2, fontsize=9.5)
-    a2.set_ylim(0, max(load) * 1.15)
+    a2.set_ylim(0, max(ys) * 1.15)
     a2.set_xlim(0, total_t)
     handles = [plt.Line2D([0], [0], marker="s", ls="", color=mode_col[m],
                           label=lab, markersize=9, alpha=0.5)
