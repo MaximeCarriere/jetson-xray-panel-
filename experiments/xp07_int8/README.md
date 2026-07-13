@@ -11,8 +11,8 @@ Throughput = mean ± SE over 3 spaced runs; AUROC ± 1000-sample bootstrap SE.
 | TensorRT FP16 | 511.9 ± 0.6 img/s | **0.7405 ± 0.0134** (= PyTorch) | 14.9 MB |
 | TensorRT INT8 | **1032.2 ± 1.5 img/s** (2×, 52× naive) | 0.6868 ± 0.0151 (**−0.054**) | 8.8 MB |
 
-INT8 doubles throughput but costs **0.054 AUROC (7%)** — a **screening vs diagnosis**
-call. FP16 remains the safe default. (QAT / per-channel INT8 could narrow the gap.)
+INT8 doubles throughput but costs **0.054 AUROC (7%)**. FP16 remains the safe default.
+(QAT / per-channel INT8 could narrow the gap.)
 AUROC re-verified on 2000 labeled ChestMNIST images; the point-estimate drop (0.054)
 is ~3.6× the per-estimate SE, though a paired test would give tighter significance.
 

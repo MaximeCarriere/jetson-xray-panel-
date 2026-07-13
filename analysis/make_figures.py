@@ -517,7 +517,9 @@ def fig_int8() -> None:
     xs = [p[1] for p in pts]
     ys = [p[2] for p in pts]
     ax.plot(xs, ys, color=INK2, linewidth=1.2, linestyle="--", zorder=2)
-    offsets = [(-6, 12), (10, 10), (12, -4)]   # stagger so labels don't collide
+    # PyTorch and FP16 sit at the same AUROC, so stagger vertically (FP16 label drops
+    # down-right into open space) to avoid the two top labels overlapping.
+    offsets = [(-8, 11), (16, -26), (12, -6)]
     for (label, x, y, c, xe, ye), off in zip(pts, offsets):
         ax.errorbar([x], [y], xerr=[xe], yerr=[ye], fmt="o", color=c, markersize=11,
                     zorder=4, ecolor=c, capsize=4, markeredgecolor=SURFACE, markeredgewidth=1.5)
@@ -530,7 +532,7 @@ def fig_int8() -> None:
     ax.set_title("INT8 quantization: 2× faster, but a real accuracy cost",
                  color=INK, fontsize=12.5, fontweight="bold", loc="left")
     ax.annotate("FP16 is free (same accuracy as PyTorch); INT8 doubles throughput "
-                "to ~1035 img/s but drops AUROC by 0.054 (7%) — a screening-vs-diagnosis call",
+                "to ~1035 img/s but drops AUROC by 0.054 (7%).",
                 (0.0, -0.15), xycoords="axes fraction", color=INK2, fontsize=8.5)
     fig.tight_layout()
     out = os.path.join(FIG, "int8_tradeoff.png")
