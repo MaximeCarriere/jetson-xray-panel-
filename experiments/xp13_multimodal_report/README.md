@@ -4,11 +4,20 @@ The whole pipeline, on one $249 Jetson, **fully offline**: a chest X-ray goes in
 a **written clinical impression** comes out — vision *and* language, both on the box,
 nothing sent to a cloud.
 
+**"Multimodal"** just means two different *kinds* of data (modalities) in one pipeline:
+here an **image** (the X-ray) and **text** (the written impression). Two different neural
+networks — one that *sees*, one that *writes* — run back-to-back on the same GPU:
+
 - **Stage 1 — vision:** the TensorRT DenseNet classifier (XP6) turns the image into 14
   pathology probabilities (~5 ms).
 - **Stage 2 — language:** a small quantized LLM (**Qwen2.5-3B, Q4, on the GPU via
   llama.cpp**) turns those numbers into a plain-language impression, with wording
   calibrated to the probabilities (>0.6 "likely", 0.4–0.6 "possible", <0.4 "unlikely").
+
+The LLM never sees the raw image — it sees the *numbers* the vision model produced, plus a
+prompt that tells it how to phrase each probability band. That's what keeps the language
+faithful to the classifier instead of hallucinating findings: the two models are chained,
+vision → numbers → language.
 
 > **Not a clinical tool.** The impression is written by a small general model from
 > model outputs — a demonstration of the *systems* capability (local vision + language
@@ -36,6 +45,27 @@ case 2 (test #144)
 The language faithfully tracks the numbers (0.95 → "likely", 0.52 → "possible",
 0.23 → "borderline").
 
+## The interactive reading station
+
+The pipeline is packaged as a self-contained, offline HTML **reading station**
+([`demos/report_station.html`](../../demos/report_station.html)) — a clinical-style viewer
+you can open in any browser with no server. Three panels, left to right: the **X-ray**
+(with ground-truth tags), the vision model's **14 pathology probabilities** as bars, and
+the local LLM's **written impression** typing out to evoke on-device generation. A footer
+shows live telemetry (classify ms · generate s · tokens/s), and you can flip through **6
+real cases** captured from the board. The pipeline strip along the top spells out
+`chest X-ray → TensorRT DenseNet → 14 probabilities → Qwen-3B (llama.cpp, GPU) → impression`.
+
+![on-device reading station](../../demos/report_station.png)
+
+*One $249 box, fully offline: image in, calibrated written impression out. The bar colours
+encode the wording bands (orange = likely >0.6, amber = possible 0.4–0.6, grey = unlikely).
+Ground truth is shown so the vision model's hits and misses are visible — it's a **systems
+demonstration, not a clinical tool**.*
+
+It's built from `results/report_cases.json`, exported by `report.py --export`, so every
+number and sentence on the page is a **real** on-board result, not a mockup.
+
 ## Performance
 - **Vision:** ~5 ms/image (TensorRT FP16).
 - **Language:** Qwen-3B Q4 on the GPU at **~15–17 tokens/s**, ~1.5–2.2 s for a
@@ -57,5 +87,7 @@ CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=87" \
 ```
 
 ## Files
-`report.py` (classify → prompt → generate). Uses `lib/trt_runner.py` +
-`lib/chest_labels.py`; model `~/models/qwen2.5-coder-3b-instruct-q4_k_m.gguf`.
+`report.py` (classify → prompt → generate; `--export` writes `results/report_cases.json`).
+Uses `lib/trt_runner.py` + `lib/chest_labels.py`; model
+`~/models/qwen2.5-coder-3b-instruct-q4_k_m.gguf`. Interactive demo:
+[`demos/report_station.html`](../../demos/report_station.html) (screenshot above).
