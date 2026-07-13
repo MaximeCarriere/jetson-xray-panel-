@@ -871,6 +871,72 @@ def fig_cost() -> None:
     print(f"wrote {out}")
 
 
+def fig_calibration() -> None:
+    """Reliability diagram + the double-sigmoid bug the calibration study exposed."""
+    cpath = os.path.join(REPO, "results", "calibration.json")
+    ppath = os.path.join(REPO, "results", "tta_preds.npz")
+    if not (os.path.exists(cpath) and os.path.exists(ppath)):
+        return
+    with open(cpath) as f:
+        c = json.load(f)
+    p_raw = np.load(ppath)["single"].ravel()
+    clip = lambda p: np.clip(p, 1e-6, 1 - 1e-6)
+    if p_raw.max() < 0.80:                       # double-sigmoided data
+        p_bug, p_fixed = p_raw, np.log(clip(p_raw) / (1 - clip(p_raw)))
+    else:                                        # already fixed -> reconstruct the bug
+        p_fixed, p_bug = p_raw, 1.0 / (1.0 + np.exp(-p_raw))
+    prev, ece = c["prevalence"], c["ece"]
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(12, 4.9), facecolor=SURFACE)
+
+    # --- Panel A: reliability diagram (confidence vs observed frequency) ---
+    _style(a1)
+    a1.plot([0, 1], [0, 1], color=INK2, ls="--", lw=1.3, zorder=2)
+    a1.annotate("perfect calibration", (0.70, 0.74), rotation=39, color=INK2,
+                fontsize=8.5, ha="center", va="center")
+    for key, lab, col in [("stored_double_sigmoid", "double-sigmoid (bug)", RED),
+                          ("fixed", "fixed", BLUE),
+                          ("temperature", f"temp-scaled (T={c['temperature']})", AQUA)]:
+        curve = c["reliability"][key]
+        a1.plot([b["conf"] for b in curve], [b["acc"] for b in curve], color=col,
+                lw=2, marker="o", ms=5, zorder=3, label=f"{lab} · ECE {ece[key]:.2f}")
+    a1.set_xlabel("predicted probability  (confidence)", color=INK2, fontsize=10)
+    a1.set_ylabel("observed frequency  (how often true)", color=INK2, fontsize=10)
+    a1.set_xlim(0, 1)
+    a1.set_ylim(0, 1)
+    a1.legend(frameon=False, fontsize=9, loc="upper left", labelcolor=INK)
+    a1.set_title("Reliability — points below the line = over-confident", color=INK,
+                 fontsize=12, fontweight="bold", loc="left")
+
+    # --- Panel B: the bug, as predicted-probability distributions (log count) ---
+    _style(a2)
+    bins = np.linspace(0, 1, 41)
+    a2.hist(p_bug, bins=bins, color=RED, alpha=0.55, label="double-sigmoid (bug)")
+    a2.hist(p_fixed, bins=bins, color=BLUE, alpha=0.55, label="fixed (real probs)")
+    a2.set_yscale("log")
+    a2.axvline(prev, color=INK, ls=":", lw=1.5, zorder=5)
+    a2.annotate(f"true prevalence {prev:.1%}", (prev + 0.02, a2.get_ylim()[1] * 0.4),
+                color=INK, fontsize=8.5)
+    a2.axvline(0.6, color=YELLOW, ls=":", lw=1.5, zorder=5)
+    a2.annotate("XP13 'likely' > 0.6", (0.61, a2.get_ylim()[1] * 0.04), color="#b07a00",
+                fontsize=8.5)
+    a2.set_xlabel("predicted probability", color=INK2, fontsize=10)
+    a2.set_ylabel("count (14 pathologies × 2000, log)", color=INK2, fontsize=10)
+    a2.set_xlim(0, 1)
+    a2.legend(frameon=False, fontsize=9, loc="upper right", labelcolor=INK)
+    a2.set_title("The bug squashed every probability into [0.5, 0.73]", color=INK,
+                 fontsize=12, fontweight="bold", loc="left")
+
+    fig.suptitle("Calibration: the probabilities are over-confident — and one path "
+                 "double-sigmoided them (AUROC never noticed)", color=INK, fontsize=12.5,
+                 fontweight="bold", x=0.02, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    out = os.path.join(FIG, "calibration.png")
+    os.makedirs(FIG, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    print(f"wrote {out}")
+
+
 def main() -> None:
     recs = _load()
     if not recs:
@@ -893,6 +959,7 @@ def main() -> None:
     fig_tta_illustration()
     fig_roc()
     fig_tta()
+    fig_calibration()
     fig_cost()
 
 

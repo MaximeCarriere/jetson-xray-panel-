@@ -73,8 +73,12 @@ def _predict(model, batch255: torch.Tensor, col_map, n_labels, bs=64) -> np.ndar
     for i in range(0, batch255.shape[0], bs):
         chunk = xrv_normalize(batch255[i:i + bs])
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
-            logits = model(chunk)
-        probs = torch.sigmoid(logits).float().cpu().numpy()
+            model_out = model(chunk)
+        # torchxrayvision's forward ALREADY applies sigmoid + op_norm (op_threshs is set on
+        # the pretrained model), so `model_out` is already probabilities in [0,1]. Do NOT
+        # sigmoid again — doing so squashed every value into [0.5, 0.73] (see XP14). AUROC
+        # is rank-based so it was unaffected, but the probabilities themselves were wrong.
+        probs = model_out.float().cpu().numpy()
         for model_col, med_col in col_map:
             out[i:i + bs, med_col] = probs[:, model_col]
     return out

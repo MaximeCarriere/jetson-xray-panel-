@@ -29,7 +29,7 @@ image through three models:
 |---|---:|---:|
 | Single pass | 0.7405 ± 0.0134 | — |
 | TTA (5 augmented views) | 0.7377 ± 0.0134 | −0.003 |
-| **Ensemble (3 different-dataset DenseNets)** | **0.7621 ± 0.0137** | **+0.022** |
+| **Ensemble (3 different-dataset DenseNets)** | **0.7620 ± 0.0137** | **+0.022** |
 
 - **Ensembling helps** (+0.022) — but with proper error bars (±1 bootstrap SE) the
   per-estimate CIs overlap, so at 2000 images the gain is **suggestive, not
@@ -78,6 +78,13 @@ right visual — a standard multi-class confusion matrix doesn't apply, and woul
 an arbitrary threshold; ROC/AUROC is threshold-free.)
 
 ![ROC curves](../../results/figures/roc_curves.png)
+
+> **Note (double-sigmoid fix):** the eval path here originally applied `torch.sigmoid` to
+> outputs that torchxrayvision already sigmoids internally, squashing the saved
+> probabilities into [0.5, 0.73]. Since AUROC/ROC are rank-based and sigmoid is monotonic,
+> **every number and curve above is unchanged** — verified by re-running with the fix. It
+> only mattered for the *probability values*, which is how [XP14](../xp14_calibration/)
+> caught it. Now fixed; the committed predictions are the real values.
 
 ## Run
 ```bash
