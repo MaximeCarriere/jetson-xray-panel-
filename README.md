@@ -43,7 +43,7 @@ Each folder is one self-contained experiment with its own README, code, and resu
 | [XP4](experiments/xp04_hetero_panel/) | Mixed-architecture panel | ResNet-50 + 3 DenseNets, 75 img/s; heavy model ≠ bottleneck |
 | [XP5](experiments/xp05_cuda_streams/) | CUDA streams | fixes memory (12 models, 680 MB), not throughput (serialized) |
 | [XP6](experiments/xp06_tensorrt_fp16/) | TensorRT FP16 | 509 img/s (25×), accuracy preserved to 0.86 pp |
-| [XP7](experiments/xp07_int8/) | INT8 quantization | 1035 img/s (2×) but −0.054 AUROC — screening vs diagnosis |
+| [XP7](experiments/xp07_int8/) | INT8 quantization | 1035 img/s (2×) but −0.054 AUROC (7%) accuracy cost |
 | [XP8](experiments/xp08_robustness/) | TTA / ensemble | ensemble +0.022 AUROC ~free; naive TTA doesn't help |
 | [XP9](experiments/xp09_power_modes/) | Power-envelope sweep | MAXN for peak; 25 W for best efficiency |
 | [XP10](experiments/xp10_endurance/) | Thermal endurance | −0.2% over 20 min, 71 °C — no throttling |

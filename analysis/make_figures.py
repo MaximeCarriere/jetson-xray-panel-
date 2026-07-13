@@ -535,7 +535,7 @@ def fig_int8() -> None:
                 "to ~1035 img/s but drops AUROC by 0.054 (7%).",
                 (0.0, -0.15), xycoords="axes fraction", color=INK2, fontsize=8.5)
     fig.tight_layout()
-    out = os.path.join(FIG, "int8_tradeoff.png")
+    out = os.path.join(FIG, "int8_speed_accuracy.png")
     os.makedirs(FIG, exist_ok=True)
     fig.savefig(out, dpi=150, facecolor=SURFACE, bbox_inches="tight")
     print(f"wrote {out}")

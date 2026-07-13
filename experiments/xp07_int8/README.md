@@ -16,7 +16,7 @@ INT8 doubles throughput but costs **0.054 AUROC (7%)**. FP16 remains the safe de
 AUROC re-verified on 2000 labeled ChestMNIST images; the point-estimate drop (0.054)
 is ~3.6× the per-estimate SE, though a paired test would give tighter significance.
 
-![int8 trade-off](../../results/figures/int8_tradeoff.png)
+![int8 trade-off](../../results/figures/int8_speed_accuracy.png)
 
 ## Run
 ```bash
