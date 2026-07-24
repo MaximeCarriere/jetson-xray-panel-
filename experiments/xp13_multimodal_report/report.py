@@ -65,35 +65,56 @@ def classify(engine: TRTModel, cmap, img255: np.ndarray):
     return out
 
 
-def build_messages(probs: dict):
-    """Band each pathology *in code* (deterministic), then let the LLM only phrase the
-    result fluently. Doing the >0.6 / 0.4-0.6 mapping ourselves — instead of asking the
-    model to reason about the numbers — is what keeps the wording faithful: a medical
-    model left to judge the probabilities will drop or re-rank findings. The LLM's job
-    here is language, not judgement. Single user turn, so it works the same for
-    Gemma/MedGemma and for models that accept a system message."""
+def band_findings(probs: dict):
+    """Split pathologies into the two reportable bands (>0.6 likely, 0.4-0.6 possible),
+    most-confident first."""
     likely = sorted([(k, v) for k, v in probs.items() if v > 0.6], key=lambda kv: -kv[1])
     possible = sorted([(k, v) for k, v in probs.items() if 0.4 <= v <= 0.6], key=lambda kv: -kv[1])
-    # names only, no numbers — the band is already decided, and passing the raw value
-    # just tempts the model to read it back out ("a likely effusion with a value of 0.90").
-    grp = lambda items: ", ".join(NICE.get(k, k) for k, _ in items)
-    # Only include a line when it has content — never feed the model "none" or an empty
-    # category, or it echoes it / over-triggers the "unremarkable" fallback.
-    lines = []
-    if likely:
-        lines.append("Likely (>0.6): " + grp(likely))
-    if possible:
-        lines.append("Possible (0.4-0.6): " + grp(possible))
-    body = "\n".join(lines) if lines else "No findings above 0.4."
-    instr = ("You are a radiology assistant. Turn the findings below into a single, "
-             "natural clinical sentence in plain English. Call each 'Likely' finding "
-             "'likely' and each 'Possible' finding 'possible / borderline'. Begin the "
-             "sentence with the findings, and mention only the findings listed below. If "
-             "any finding is listed, do NOT describe the study as unremarkable. Only when "
-             "the line below says 'No findings' may you say the study appears largely "
-             "unremarkable. Do not invent findings. Be concise.")
-    user = f"{instr}\n\n{body}\n\nImpression:"
-    return [{"role": "user", "content": user}]
+    return likely, possible
+
+
+def _phrase(items, adj):
+    names = [NICE.get(k, k) for k, _ in items]
+    if not names:
+        return ""
+    if len(names) == 1:
+        return f"a {adj} {names[0]}"
+    if len(names) == 2:
+        return f"{adj} {names[0]} and {names[1]}"
+    return f"{adj} " + ", ".join(names[:-1]) + f", and {names[-1]}"
+
+
+def findings_sentence(likely, possible):
+    """Compose the findings **in code** so they track the numbers exactly. Left to write
+    findings freely, MedGemma invents extras (a phantom "pleural effusion"), re-bands
+    (a 0.63 effusion becomes "possible"), and prepends "unremarkable" over real findings.
+    Deterministic phrasing removes all of that: the model never authors a finding."""
+    likely_txt = _phrase(likely, "likely")
+    possible_txt = _phrase(possible, "possible / borderline")
+    if likely_txt and possible_txt:
+        return f"The study shows {likely_txt}, with {possible_txt}."
+    if likely_txt:
+        return f"The study shows {likely_txt}."
+    if possible_txt:
+        return f"The study shows {possible_txt}."
+    return "The study appears largely unremarkable."
+
+
+def recommendation_messages(findings: str, has_findings: bool):
+    """The LLM's job: draft ONE plain-language next-step sentence. It is never given the
+    finding names to restate, so it cannot invent or re-band them — it only recommends
+    how a clinician might confirm or rule out what the code already stated."""
+    if has_findings:
+        instr = ("Write a single complete sentence of about 12 to 20 words recommending next "
+                 "steps to confirm or rule out the findings in the chest X-ray impression "
+                 "below. Mention clinical correlation and, where appropriate, additional or "
+                 "lateral views or follow-up imaging. Do not name any finding, location, "
+                 "side, size, or measurement. Return only the sentence, ending with a period.")
+    else:
+        instr = ("Write a single complete sentence of about 10 to 15 words recommending "
+                 "routine follow-up as clinically indicated for a chest X-ray with no "
+                 "significant findings. Return only the sentence, ending with a period.")
+    return [{"role": "user", "content": f"{instr}\n\nImpression: {findings}\n\nRecommendation:"}]
 
 
 def _img_datauri(img255: np.ndarray) -> str:
@@ -128,7 +149,7 @@ def write_station(template_path: str, payload: dict, out_path: str) -> None:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=6, help="sample images to report on")
-    ap.add_argument("--max-tokens", type=int, default=120)
+    ap.add_argument("--max-tokens", type=int, default=220)
     ap.add_argument("--llm-path", default=LLM_PATH, help="GGUF path for the text writer")
     ap.add_argument("--llm-name", default=LLM_NAME, help="label recorded in the output")
     ap.add_argument("--export", default=None, help="write cases (with images) to JSON")
@@ -178,11 +199,14 @@ def main():
         probs = classify(engine, cmap, img)
         t_classify = (time.perf_counter() - t0) * 1000
 
-        msgs = build_messages(probs)
+        likely, possible = band_findings(probs)
+        findings = findings_sentence(likely, possible)
+        msgs = recommendation_messages(findings, bool(likely or possible))
         t1 = time.perf_counter()
         resp = llm.create_chat_completion(msgs, max_tokens=args.max_tokens, temperature=0.2)
         t_gen = time.perf_counter() - t1
-        text = resp["choices"][0]["message"]["content"].strip()
+        rec = resp["choices"][0]["message"]["content"].strip()
+        text = f"{findings} {rec}".strip()
         n_tok = resp["usage"]["completion_tokens"]
 
         top = sorted(probs.items(), key=lambda kv: -kv[1])[:4]
@@ -197,7 +221,6 @@ def main():
             cases.append({
                 "id": int(i),
                 "image": _img_datauri(img),
-                "ground_truth": [NICE.get(t, t) for t in truth],
                 "probs": {NICE.get(k2, k2): round(v, 3) for k2, v in probs.items()},
                 "impression": text,
                 "classify_ms": round(t_classify, 1),

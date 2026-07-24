@@ -11,61 +11,63 @@ networks — one that *sees*, one that *writes* — run back-to-back on the same
 - **Stage 1 — vision:** the TensorRT DenseNet classifier (XP6) turns the image into 14
   pathology probabilities (~5 ms).
 - **Stage 2 — language:** a small quantized *medical* LLM (**MedGemma 4B, Q4, text-only,
-  on the GPU via llama.cpp**) turns those numbers into a plain-language impression, with
-  wording calibrated to the probabilities (>0.6 "likely", 0.4–0.6 "possible", <0.4
-  "unlikely").
+  on the GPU via llama.cpp**) drafts the **recommended next steps** of the report.
 
-The LLM never sees the raw image — it sees the *numbers* the vision model produced, plus a
-prompt that tells it how to phrase each probability band. That's what keeps the language
-faithful to the classifier instead of hallucinating findings: the two models are chained,
-vision → numbers → language.
+The findings line is composed **in code** from the probabilities (>0.6 "likely", 0.4–0.6
+"possible", <0.4 "unlikely") — the LLM never writes it, and never sees the raw image. It is
+handed only the finished findings sentence and asked for a next-steps recommendation. That
+split is what keeps the report faithful to the classifier instead of hallucinating findings.
 
-> **Not a clinical tool.** The impression is written by a small general model from
-> model outputs — a demonstration of the *systems* capability (local vision + language
-> on edge hardware), not a validated report. Ground truth is shown so you can see what
-> the vision model got right.
+> **Not a clinical tool.** The findings come from a pretrained classifier and the wording
+> from a small general model — a demonstration of the *systems* capability (local vision +
+> language on edge hardware), not a validated report.
 
 ## Real output (on the board)
 
 ```
 case 1 (test #296)
-  ground truth:      effusion, consolidation
   top predictions:   effusion 0.95, infiltration 0.34, cardiomegaly 0.22
-  IMPRESSION (LLM):  The study shows a likely effusion.
-  [classify 5.9 ms · generate 1.1 s · 8 tok · 7.1 tok/s]
+  REPORT (code + LLM):
+    The study shows a likely effusion. Given the likely effusion, clinical
+    correlation is essential, and further evaluation with a lateral decubitus
+    view or a repeat study is recommended.
+  [classify 5.5 ms · generate 2.3 s · 28 tok · 12.4 tok/s]
 
 case 3 (test #469)
-  ground truth:      pleural thickening
   top predictions:   mass 0.64, effusion 0.63, infiltration 0.41
-  IMPRESSION (LLM):  The study shows a likely mass and effusion, with possible /
-                     borderline infiltration.
-  [classify 6.1 ms · generate 1.1 s · 17 tok · 15.4 tok/s]
+  REPORT (code + LLM):
+    The study shows likely mass and effusion, with a possible / borderline
+    infiltration. Given the findings, further evaluation is needed to confirm or
+    exclude the possibility of a mass and effusion, ideally with clinical
+    correlation and potentially additional imaging.
+  [classify 6.2 ms · generate 1.85 s · 30 tok · 16.2 tok/s]
 ```
 
-The bands (> 0.6 = likely, 0.4–0.6 = possible) are decided **in code**; the LLM only
-phrases them, so the language tracks the numbers exactly (0.64/0.63 → "likely", 0.41 →
-"possible"). This matters: left to judge the raw scores *itself*, MedGemma — a medical
-model — second-guesses them and quietly drops findings (e.g. omitting a 0.88 effusion, or
-calling a study "unremarkable" over a listed finding). Deciding the bands in code and
-leaving only the wording to the model is what keeps it faithful. A "smarter" model is not
-automatically better for a faithfulness-critical pipeline.
+**Findings in code, recommendation by the model.** The findings sentence is composed
+entirely in code from the bands (> 0.6 = likely, 0.4–0.6 = possible), so it tracks the
+numbers exactly. MedGemma is handed only that sentence and drafts the next-steps
+recommendation. The split is deliberate: asked to write the findings *itself*, MedGemma — a
+medical model — second-guesses the numbers. It invents findings that are not there (a
+phantom "pleural effusion"), re-bands a 0.63 effusion as "possible", and calls a study
+"unremarkable" over a listed finding. Composing the findings in code and leaving the model
+only the recommendation is what keeps it faithful. A "smarter" model is not automatically
+better for a faithfulness-critical pipeline.
 
 ## The interactive reading station
 
 The pipeline is packaged as a self-contained, offline HTML **reading station**
 ([`demos/report_station.html`](../../demos/report_station.html)) — a clinical-style viewer
-you can open in any browser with no server. Three panels, left to right: the **X-ray**
-(with ground-truth tags), the vision model's **14 pathology probabilities** as bars, and
-the local LLM's **written impression** typing out to evoke on-device generation. A footer
-shows live telemetry (classify ms · generate s · tokens/s), and you can flip through **6
-real cases** captured from the board. The pipeline strip along the top spells out
-`chest X-ray → TensorRT DenseNet → 14 probabilities → MedGemma 4B (llama.cpp, GPU) → impression`.
+you can open in any browser with no server. Three panels, left to right: the **X-ray**,
+the vision model's **top pathology probabilities** as bars (top 6, expandable to all 14),
+and the **written report** typing out to evoke on-device generation. A footer shows live
+telemetry (classify ms · generate s · tokens/s), and you can flip through **6 real cases**
+captured from the board. The pipeline strip along the top spells out
+`chest X-ray → TensorRT DenseNet → 14 probabilities → MedGemma 4B (llama.cpp, GPU) → report`.
 
 ![on-device reading station](../../demos/report_station.png)
 
-*One $249 box, fully offline: image in, calibrated written impression out. The bar colours
-encode the wording bands (orange = likely >0.6, amber = possible 0.4–0.6, grey = unlikely).
-Ground truth is shown so the vision model's hits and misses are visible — it's a **systems
+*One $249 box, fully offline: image in, written report out. The bar colours encode the
+wording bands (orange = likely >0.6, amber = possible 0.4–0.6, grey = unlikely). A **systems
 demonstration, not a clinical tool**.*
 
 It's built from `results/report_cases.json`; `report.py --html-out demos/report_station.html`
