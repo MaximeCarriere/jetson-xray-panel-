@@ -30,19 +30,16 @@ keeps the report faithful to the classifier instead of hallucinating findings.
 case 1 (test #296)
   top predictions:     effusion 0.95, infiltration 0.34, cardiomegaly 0.22
   DIAGNOSTIC (code):   The study shows a likely effusion.
-  NEXT STEPS (LLM):    A lateral decubitus view to assess for free fluid.
-  CONSIDERATIONS (LLM):The effusion could be transudative or exudative, which will
-                       influence management.
-  [classify 5.5 ms · generate 2.9 s · 38 tok · 13.0 tok/s]
+  NEXT STEPS (LLM):    A lateral decubitus view would help confirm the effusion.
+  CONSIDERATIONS (LLM):If the effusion is large, a thoracentesis may be needed.
+  [classify 5.5 ms · generate 2.9 s · 36 tok · 12.5 tok/s]
 
-case 3 (test #469)
-  top predictions:     mass 0.64, effusion 0.63, infiltration 0.41
-  DIAGNOSTIC (code):   The study shows likely mass and effusion, with a possible /
-                       borderline infiltration.
-  NEXT STEPS (LLM):    CT chest with contrast to further characterize the mass and effusion.
-  CONSIDERATIONS (LLM):The patient's symptoms should be correlated with the radiographic
-                       findings to guide further management.
-  [classify 6.1 ms · generate 2.4 s · 39 tok · 16.3 tok/s]
+case 2 (test #517)
+  top predictions:     cardiomegaly 0.88, effusion 0.29, infiltration 0.17
+  DIAGNOSTIC (code):   The study shows a likely cardiomegaly.
+  NEXT STEPS (LLM):    Echocardiogram to assess cardiac function and chamber sizes.
+  CONSIDERATIONS (LLM):Assess for pulmonary edema if the patient is symptomatic.
+  [classify 6.0 ms · generate 1.9 s · 31 tok · 16.2 tok/s]
 ```
 
 **Diagnostic in code, the rest by the model.** The diagnostic (findings) sentence is

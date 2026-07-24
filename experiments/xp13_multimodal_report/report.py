@@ -109,11 +109,14 @@ def report_messages(findings: str, has_findings: bool):
     if has_findings:
         instr = ("You are a radiology assistant. Given the chest X-ray impression below, "
                  "reply with exactly these two lines and nothing else:\n"
-                 "NEXT STEPS: one sentence naming the most appropriate specific next "
-                 "investigation to confirm or characterise the findings (e.g. CT, "
-                 "ultrasound, a lateral decubitus view, or comparison with prior imaging).\n"
-                 "CONSIDERATIONS: one sentence of brief clinical considerations or cautions "
-                 "relevant to the findings, phrased as considerations, not directives.\n"
+                 "NEXT STEPS: one sentence naming the single most appropriate investigation "
+                 "to confirm or characterise the findings — pick the best fit (e.g. a lateral "
+                 "decubitus view or ultrasound for effusion, CT for a mass or nodule, an "
+                 "echocardiogram for cardiomegaly, comparison with prior imaging). Do not "
+                 "default to CT if a simpler test fits.\n"
+                 "CONSIDERATIONS: one sentence giving a specific, useful point — a likely "
+                 "differential, a caution, or what would change management. Do not write "
+                 "generic filler such as 'consider the patient's symptoms'.\n"
                  "Base both only on the findings in the impression. Do not invent findings.")
     else:
         instr = ("You are a radiology assistant. The chest X-ray has no significant "
