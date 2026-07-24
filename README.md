@@ -25,17 +25,18 @@ negative results (naive TTA, the INT8 accuracy cost, the concurrency memory wall
 
 ## What it actually does — a full X-ray → LLM report, on the box, offline
 
-That optimized pipeline drives a real end-to-end capstone: a chest X-ray is classified by
-the TensorRT vision model, and a small on-device LLM writes a plain-language impression
-from the probabilities — **both models on one $249 Jetson, fully offline**
-([XP13](experiments/xp13_multimodal_report/)).
+That optimized pipeline drives a real end-to-end capstone: the TensorRT vision model
+classifies a chest X-ray, code turns its probabilities into the diagnostic, and **MedGemma
+4B** (on-device) adds the next steps and clinical considerations — **both models on one
+$249 Jetson, fully offline** ([XP13](experiments/xp13_multimodal_report/)).
 
 ![on-device chest X-ray reading station](demos/report_station.png)
 
-*Image in → 14 pathology probabilities → written impression, ~2 s per case, no cloud.
-Bars encode the wording bands (orange = likely, amber = possible, grey = unlikely).
-Systems demonstration, not a clinical tool — ground truth is shown so the model's hits and
-misses are visible.*
+*Image in → 14 pathology probabilities → written report, ~2 s per case, no cloud. Three
+boxes: the diagnostic (composed in code, from the vision model), then MedGemma's next steps
+and clinical considerations, each labelled with its source. Bars encode the bands
+(orange = likely, amber = possible, grey = unlikely). A systems demonstration, not a
+clinical tool.*
 
 **Reproducibility.** Every experiment was repeated and reported with error bars —
 ±1 standard error over 3 runs for throughput, ±1 bootstrap SE (1000 resamples) for
@@ -63,7 +64,7 @@ Each folder is one self-contained experiment with its own README, code, and resu
 | [XP10](experiments/xp10_endurance/) | Thermal endurance | −0.2% over 10 min, 69 °C — no throttling |
 | [XP11](experiments/xp11_serving/) | Serving layer + load | dynamic batching; SLA-safe capacity ~482 req/s (raw 510) |
 | [XP12](experiments/xp12_energy_governor/) | Energy governor | adaptive power scaling; −3.4 % energy vs MAXN — but power mode is a weak lever |
-| [XP13](experiments/xp13_multimodal_report/) | On-device multimodal | X-ray → local LLM report; vision + language on one box, offline, ~2 s |
+| [XP13](experiments/xp13_multimodal_report/) | On-device multimodal | X-ray → on-device report (MedGemma 4B); vision + language on one box, offline, ~2 s |
 | [XP14](experiments/xp14_calibration/) | Calibration | probabilities are over-confident (ECE 0.28); caught a double-sigmoid bug AUROC missed |
 | [demos](demos/) | Live demos | PyTorch (75 img/s) · TensorRT (398 img/s) · browser replay |
 
