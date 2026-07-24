@@ -100,21 +100,29 @@ def findings_sentence(likely, possible):
     return "The study appears largely unremarkable."
 
 
-def recommendation_messages(findings: str, has_findings: bool):
-    """The LLM's job: draft ONE plain-language next-step sentence. It is never given the
-    finding names to restate, so it cannot invent or re-band them — it only recommends
-    how a clinician might confirm or rule out what the code already stated."""
+def report_messages(findings: str, has_findings: bool):
+    """One LLM call for the two *generated* sections of the report: the specific next
+    steps, and the clinical considerations. The model is handed only the code-composed
+    findings sentence (never the raw numbers, never the image), so it tailors advice to
+    real findings without authoring or re-banding them. Two labelled lines out (a JSON
+    grammar constraint worked but ran ~3x slower), parsed into their own boxes."""
     if has_findings:
-        instr = ("Write a single complete sentence of about 12 to 20 words recommending next "
-                 "steps to confirm or rule out the findings in the chest X-ray impression "
-                 "below. Mention clinical correlation and, where appropriate, additional or "
-                 "lateral views or follow-up imaging. Do not name any finding, location, "
-                 "side, size, or measurement. Return only the sentence, ending with a period.")
+        instr = ("You are a radiology assistant. Given the chest X-ray impression below, "
+                 "reply with exactly these two lines and nothing else:\n"
+                 "NEXT STEPS: one sentence naming the most appropriate specific next "
+                 "investigation to confirm or characterise the findings (e.g. CT, "
+                 "ultrasound, a lateral decubitus view, or comparison with prior imaging).\n"
+                 "CONSIDERATIONS: one sentence of brief clinical considerations or cautions "
+                 "relevant to the findings, phrased as considerations, not directives.\n"
+                 "Base both only on the findings in the impression. Do not invent findings.")
     else:
-        instr = ("Write a single complete sentence of about 10 to 15 words recommending "
-                 "routine follow-up as clinically indicated for a chest X-ray with no "
-                 "significant findings. Return only the sentence, ending with a period.")
-    return [{"role": "user", "content": f"{instr}\n\nImpression: {findings}\n\nRecommendation:"}]
+        instr = ("You are a radiology assistant. The chest X-ray has no significant "
+                 "findings. Reply with exactly these two lines and nothing else:\n"
+                 "NEXT STEPS: one sentence recommending routine follow-up as clinically "
+                 "indicated.\n"
+                 "CONSIDERATIONS: one short sentence, e.g. correlate with the clinical "
+                 "presentation.")
+    return [{"role": "user", "content": f"{instr}\n\nImpression: {findings}\n\n"}]
 
 
 def _img_datauri(img255: np.ndarray) -> str:
@@ -201,19 +209,30 @@ def main():
 
         likely, possible = band_findings(probs)
         findings = findings_sentence(likely, possible)
-        msgs = recommendation_messages(findings, bool(likely or possible))
+        msgs = report_messages(findings, bool(likely or possible))
         t1 = time.perf_counter()
         resp = llm.create_chat_completion(msgs, max_tokens=args.max_tokens, temperature=0.2)
         t_gen = time.perf_counter() - t1
-        rec = resp["choices"][0]["message"]["content"].strip()
-        text = f"{findings} {rec}".strip()
+        raw = resp["choices"][0]["message"]["content"].strip()
+        next_steps, considerations = "", ""
+        for line in raw.splitlines():
+            s = line.strip().lstrip("-*• ").strip()
+            up = s.upper()
+            if up.startswith("NEXT STEP"):
+                next_steps = s.split(":", 1)[1].strip() if ":" in s else s
+            elif up.startswith("CONSIDERATION"):
+                considerations = s.split(":", 1)[1].strip() if ":" in s else s
+        if not next_steps and not considerations:
+            next_steps = raw
         n_tok = resp["usage"]["completion_tokens"]
 
         top = sorted(probs.items(), key=lambda kv: -kv[1])[:4]
         print(f"===== case {k+1} (test #{i}) =====")
         print(f"  ground truth: {', '.join(truth) if truth else '(none labelled)'}")
         print(f"  top predictions: " + ", ".join(f"{n} {p:.2f}" for n, p in top))
-        print(f"  IMPRESSION (local LLM): {text}")
+        print(f"  DIAGNOSTIC (code): {findings}")
+        print(f"  NEXT STEPS (LLM):  {next_steps}")
+        print(f"  CONSIDERATIONS (LLM): {considerations}")
         print(f"  [classify {t_classify:.1f} ms · generate {t_gen:.1f} s "
               f"· {n_tok} tok · {n_tok/t_gen:.1f} tok/s]\n", flush=True)
 
@@ -222,7 +241,9 @@ def main():
                 "id": int(i),
                 "image": _img_datauri(img),
                 "probs": {NICE.get(k2, k2): round(v, 3) for k2, v in probs.items()},
-                "impression": text,
+                "findings": findings,
+                "next_steps": next_steps,
+                "considerations": considerations,
                 "classify_ms": round(t_classify, 1),
                 "generate_s": round(t_gen, 2),
                 "tokens": int(n_tok),

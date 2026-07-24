@@ -11,12 +11,14 @@ networks — one that *sees*, one that *writes* — run back-to-back on the same
 - **Stage 1 — vision:** the TensorRT DenseNet classifier (XP6) turns the image into 14
   pathology probabilities (~5 ms).
 - **Stage 2 — language:** a small quantized *medical* LLM (**MedGemma 4B, Q4, text-only,
-  on the GPU via llama.cpp**) drafts the **recommended next steps** of the report.
+  on the GPU via llama.cpp**) drafts the **next steps** and the **clinical considerations**.
 
-The findings line is composed **in code** from the probabilities (>0.6 "likely", 0.4–0.6
-"possible", <0.4 "unlikely") — the LLM never writes it, and never sees the raw image. It is
-handed only the finished findings sentence and asked for a next-steps recommendation. That
-split is what keeps the report faithful to the classifier instead of hallucinating findings.
+The report has three parts. The **diagnostic** (findings line) is composed **in code** from
+the probabilities (>0.6 "likely", 0.4–0.6 "possible", <0.4 "unlikely") — the LLM never writes
+it, and never sees the raw image. The LLM is handed only that finished sentence and, in one
+call, returns two labelled lines: a **specific next step** to confirm the findings (CT,
+ultrasound, a lateral decubitus view…) and a **clinical consideration**. That split is what
+keeps the report faithful to the classifier instead of hallucinating findings.
 
 > **Not a clinical tool.** The findings come from a pretrained classifier and the wording
 > from a small general model — a demonstration of the *systems* capability (local vision +
@@ -26,32 +28,33 @@ split is what keeps the report faithful to the classifier instead of hallucinati
 
 ```
 case 1 (test #296)
-  top predictions:   effusion 0.95, infiltration 0.34, cardiomegaly 0.22
-  REPORT (code + LLM):
-    The study shows a likely effusion. Given the likely effusion, clinical
-    correlation is essential, and further evaluation with a lateral decubitus
-    view or a repeat study is recommended.
-  [classify 5.5 ms · generate 2.3 s · 28 tok · 12.4 tok/s]
+  top predictions:     effusion 0.95, infiltration 0.34, cardiomegaly 0.22
+  DIAGNOSTIC (code):   The study shows a likely effusion.
+  NEXT STEPS (LLM):    A lateral decubitus view to assess for free fluid.
+  CONSIDERATIONS (LLM):The effusion could be transudative or exudative, which will
+                       influence management.
+  [classify 5.5 ms · generate 2.9 s · 38 tok · 13.0 tok/s]
 
 case 3 (test #469)
-  top predictions:   mass 0.64, effusion 0.63, infiltration 0.41
-  REPORT (code + LLM):
-    The study shows likely mass and effusion, with a possible / borderline
-    infiltration. Given the findings, further evaluation is needed to confirm or
-    exclude the possibility of a mass and effusion, ideally with clinical
-    correlation and potentially additional imaging.
-  [classify 6.2 ms · generate 1.85 s · 30 tok · 16.2 tok/s]
+  top predictions:     mass 0.64, effusion 0.63, infiltration 0.41
+  DIAGNOSTIC (code):   The study shows likely mass and effusion, with a possible /
+                       borderline infiltration.
+  NEXT STEPS (LLM):    CT chest with contrast to further characterize the mass and effusion.
+  CONSIDERATIONS (LLM):The patient's symptoms should be correlated with the radiographic
+                       findings to guide further management.
+  [classify 6.1 ms · generate 2.4 s · 39 tok · 16.3 tok/s]
 ```
 
-**Findings in code, recommendation by the model.** The findings sentence is composed
-entirely in code from the bands (> 0.6 = likely, 0.4–0.6 = possible), so it tracks the
-numbers exactly. MedGemma is handed only that sentence and drafts the next-steps
-recommendation. The split is deliberate: asked to write the findings *itself*, MedGemma — a
-medical model — second-guesses the numbers. It invents findings that are not there (a
-phantom "pleural effusion"), re-bands a 0.63 effusion as "possible", and calls a study
-"unremarkable" over a listed finding. Composing the findings in code and leaving the model
-only the recommendation is what keeps it faithful. A "smarter" model is not automatically
-better for a faithfulness-critical pipeline.
+**Diagnostic in code, the rest by the model.** The diagnostic (findings) sentence is
+composed entirely in code from the bands (> 0.6 = likely, 0.4–0.6 = possible), so it tracks
+the numbers exactly. MedGemma is handed only that sentence and, in **one call**, returns two
+labelled lines — a specific next step and a clinical consideration. The split is deliberate:
+asked to write the findings *itself*, MedGemma — a medical model — second-guesses the
+numbers. It invents findings that are not there (a phantom "pleural effusion"), re-bands a
+0.63 effusion as "possible", and calls a study "unremarkable" over a listed finding. Keeping
+the diagnostic in code, and letting the model add only the next step and the consideration,
+is what keeps it faithful. (A JSON grammar gave the same split but ran ~3× slower, so the two
+sections are parsed from two labelled lines.)
 
 ## The interactive reading station
 
@@ -59,7 +62,9 @@ The pipeline is packaged as a self-contained, offline HTML **reading station**
 ([`demos/report_station.html`](../../demos/report_station.html)) — a clinical-style viewer
 you can open in any browser with no server. Three panels, left to right: the **X-ray**,
 the vision model's **top pathology probabilities** as bars (top 6, expandable to all 14),
-and the **written report** typing out to evoke on-device generation. A footer shows live
+and the **report** in three labelled boxes — **current diagnostic** (from the vision model),
+**next steps to confirm**, and **clinical considerations** (both from MedGemma), the last two
+typing out to evoke on-device generation. Each box shows its source. A footer shows live
 telemetry (classify ms · generate s · tokens/s), and you can flip through **6 real cases**
 captured from the board. The pipeline strip along the top spells out
 `chest X-ray → TensorRT DenseNet → 14 probabilities → MedGemma 4B (llama.cpp, GPU) → report`.
