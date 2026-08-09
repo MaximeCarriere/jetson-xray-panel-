@@ -36,17 +36,31 @@ def main():
     fig, (axL, axR) = plt.subplots(1, 2, figsize=(15, 5),
                                    gridspec_kw={"width_ratios": [2.4, 1]})
 
-    # LEFT — per-category latency, real pathologies then the "unrelated" degenerate inputs
+    # LEFT — per-category latency: pathologies (blue), degenerate inputs (grey),
+    # real natural images from CIFAR (orange). If content leaked, they'd separate.
     pc = cl["per_category"]
-    real = [c for c in pc if not c.startswith("_")]
+    path = sorted(c for c in pc if not c.startswith(("_", "~")))
     degen = [c for c in pc if c.startswith("_")]
-    order = sorted(real) + degen
-    labels = [c.replace("_", "") if c.startswith("_") else c for c in order]
+    cifar = [c for c in pc if c.startswith("~")]
+    order = path + degen + cifar
+
+    def _lab(c):
+        if c.startswith("_"):
+            return c[1:] + "\n(unrelated)"
+        if c.startswith("~"):
+            return c[1:] + "\n(CIFAR)"
+        return c
+    labels = [_lab(c) for c in order]
     means = [pc[c]["mean_ms"] for c in order]
     stds = [pc[c]["std_ms"] for c in order]
-    colors = ["#0072B2"] * len(real) + ["#999999"] * len(degen)
+    colors = (["#0072B2"] * len(path) + ["#999999"] * len(degen) + ["#D55E00"] * len(cifar))
     x = np.arange(len(order))
     axL.bar(x, means, yerr=stds, color=colors, capsize=3, error_kw={"ecolor": MUTED, "lw": 1})
+    from matplotlib.patches import Patch
+    axL.legend(handles=[Patch(color="#0072B2", label="chest X-ray (by pathology)"),
+                        Patch(color="#999999", label="degenerate (noise/black/white)"),
+                        Patch(color="#D55E00", label="CIFAR natural images (car/cat/ship)")],
+               loc="upper right", fontsize=8, framealpha=0.95)
     gm = cl["grand_mean_ms"]
     axL.axhline(gm, color=INK, ls="--", lw=1)
     axL.set_xticks(x); axL.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)

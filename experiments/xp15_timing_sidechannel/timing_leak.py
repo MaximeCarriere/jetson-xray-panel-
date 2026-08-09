@@ -116,11 +116,35 @@ def category_tensors(per_cat, size=224, seed=0):
         arr = np.stack([_preprocess(imgs[i], size) for i in idxs])   # (k,1,size,size)
         tensors[name] = torch.from_numpy(arr).to(DEVICE)
 
-    # "totally unrelated pictures": nothing like an X-ray.
+    # "totally unrelated pictures", part 1 — degenerate inputs (nothing like an X-ray).
     k = per_cat
     tensors["_noise"] = ((torch.rand(k, 1, size, size) * 2048) - 1024).to(DEVICE)
     tensors["_black"] = torch.full((k, 1, size, size), -1024.0).to(DEVICE)
     tensors["_white"] = torch.full((k, 1, size, size), 1024.0).to(DEVICE)
+
+    # part 2 — REAL natural images from a totally different domain (CIFAR-10: cars, cats,
+    # ships). Resized 32->224 with PIL (cv2 is ABI-broken on this board). If an attacker
+    # can't tell a car from a chest X-ray by timing, content really doesn't leak.
+    try:
+        from PIL import Image
+        from torchvision.datasets import CIFAR10
+        ds = CIFAR10(root=os.path.join(REPO, "results", "raw", "cifar"),
+                     train=False, download=True)
+        want = {"automobile": "~car", "cat": "~cat", "ship": "~ship"}
+        cls = ds.classes
+        buckets = {tag: [] for tag in want.values()}
+        for img, y in ds:                                # img is a PIL RGB 32x32
+            name = cls[y]
+            if name in want and len(buckets[want[name]]) < per_cat:
+                g = np.array(img.convert("L").resize((size, size), Image.BILINEAR))
+                buckets[want[name]].append(xrv_normalize(g.astype(np.float32))[None, ...])
+            if all(len(b) >= per_cat for b in buckets.values()):
+                break
+        for tag, arrs in buckets.items():
+            if arrs:
+                tensors[tag] = torch.from_numpy(np.stack(arrs).astype(np.float32)).to(DEVICE)
+    except Exception as e:                               # torchvision/CIFAR unavailable
+        print(f"   (CIFAR unrelated images skipped: {e})", flush=True)
     return tensors
 
 
@@ -141,8 +165,9 @@ def content_leak(model, tensors, repeats, seed=0):
         by_cat.setdefault(tag, []).extend(lat[i])
     per_cat = {c: summarize(v) for c, v in by_cat.items()}
 
-    # effect size + Kruskal-Wallis across the real pathology categories (exclude degenerate)
-    real = {c: by_cat[c] for c in by_cat if not c.startswith("_")}
+    # effect size + Kruskal-Wallis across the pathology categories only (exclude the
+    # degenerate "_" inputs and the CIFAR "~" natural images).
+    real = {c: by_cat[c] for c in by_cat if not (c.startswith("_") or c.startswith("~"))}
     means = [per_cat[c]["mean_ms"] for c in real]
     grand = float(np.mean([v for vs in real.values() for v in vs]))
     spread_ms = round(max(means) - min(means), 4)
@@ -231,6 +256,8 @@ def main() -> int:
     a.add_argument("--per-cat", type=int, default=80, help="images per category")
     a.add_argument("--repeats", type=int, default=8, help="timing repeats per image")
     a.add_argument("--no-energy", action="store_true")
+    a.add_argument("--content-only", action="store_true",
+                   help="re-measure only Part A; keep B/C from the existing JSON")
     args = a.parse_args()
     if not torch.cuda.is_available():
         print("error: needs CUDA (run on the Jetson)", file=sys.stderr); return 2
@@ -246,15 +273,20 @@ def main() -> int:
           f"({content['spread_pct_of_mean']}% of mean {content['grand_mean_ms']} ms), "
           f"Kruskal-Wallis p={content['kruskal_wallis']['p']:.3g}")
 
-    print("B. shape / model control...", flush=True)
-    control = shape_model_control(args.per_cat, args.repeats)
-    for k, v in control.items():
-        print(f"   {k:22} {v['mean_ms']:.3f} ms")
-
-    energy = None
-    if not args.no_energy:
-        print("C. energy per category (sustained)...", flush=True)
-        energy = energy_per_category(model, tensors)
+    prev = json.load(open(OUT)) if (args.content_only and os.path.isfile(OUT)) else {}
+    if args.content_only:
+        print("B/C reused from existing JSON (--content-only)")
+        control = prev.get("shape_model_control")
+        energy = prev.get("energy_per_category")
+    else:
+        print("B. shape / model control...", flush=True)
+        control = shape_model_control(args.per_cat, args.repeats)
+        for k, v in control.items():
+            print(f"   {k:22} {v['mean_ms']:.3f} ms")
+        energy = None
+        if not args.no_energy:
+            print("C. energy per category (sustained)...", flush=True)
+            energy = energy_per_category(model, tensors)
 
     out = {
         "experiment": "xp15_timing_sidechannel",

@@ -13,8 +13,10 @@ tell you anything about the X-ray?*
 ## What we measured (one image at a time, batch 1 — the real single-query case)
 
 - **A · Content.** Per-pathology-category latency, mean ± std, over the labelled ChestMNIST
-  test set — plus **"totally unrelated pictures"** (pure noise, all-black, all-white) to
-  probe whether wildly non-X-ray content changes the timing.
+  test set — plus **"totally unrelated pictures"** from two angles: degenerate inputs (pure
+  noise, all-black, all-white) *and* **real natural photos from a completely different
+  domain** (CIFAR-10 cars, cats, ships). If a car classifies in the same time as a chest
+  X-ray, content really doesn't leak.
 - **B · Model / shape** (positive control). The same measurement across DenseNet@224 vs
   ResNet@512 and two different DenseNet weight sets — to show the channel *is* real
   somewhere.
@@ -33,11 +35,12 @@ not just a p-value: with tens of thousands of samples any trivial difference bec
 
 ![timing side-channel](../../results/figures/timing_sidechannel.png)
 
-**Content — a dead channel.** All 15 pathology categories *and* the three unrelated inputs
-(pure noise, all-black, all-white) land at **49.67 ms**, within a total spread of
-**0.088 ms — 0.18 % of the mean**. Energy barely moves either: **~404 mJ per inference**
-across categories, a ~1 % spread. A "cardiomegaly" image, an "effusion" image, and a frame
-of pure static all cost the same time and the same joules.
+**Content — a dead channel.** All 15 pathology categories, the three degenerate inputs
+(noise / black / white), **and three classes of real CIFAR photos (car, cat, ship)** land
+at **49.55 ms** — a total spread across all 21 groups of **0.066 ms, 0.13 % of the mean**.
+A chest X-ray of cardiomegaly (49.54 ms) and a **photo of a car** (49.55 ms) differ by
+**11 microseconds**. Energy barely moves either: **~404 mJ per inference**, a ~1 % spread.
+Content — medical or not — is simply invisible to the clock.
 
 > The Kruskal-Wallis test reports p ≈ 6 × 10⁻⁹ — technically "significant". That is the
 > **p-value trap**: with 18,000 samples even a 0.18 % difference is *detectable*, but an
