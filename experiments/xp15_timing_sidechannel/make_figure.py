@@ -1,11 +1,11 @@
-"""XP15 figure — the timing side-channel result.
+"""XP15 figure — the timing side-channel result, one clean picture.
 
-    ~/xray-venv/bin/python make_figure.py
+    python make_figure.py           # reads results/timing_sidechannel.json (no board needed)
 
-Reads results/timing_sidechannel.json. Two panels:
-  left  — per-category batch-1 latency (mean ± std). If content leaked, the bars would
-          separate; they don't (they sit on top of each other).
-  right — the positive control: latency by MODEL / input SHAPE, which does separate.
+Left  : per-inference latency for every input — 15 chest-X-ray pathologies, 3 degenerate
+        inputs, 3 CIFAR photos — as a horizontal dot plot. They all land on one line: the
+        image CONTENT does not leak.
+Right : the same measurement across models / input sizes — which pipeline ran DOES leak.
 """
 from __future__ import annotations
 
@@ -17,84 +17,87 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import Patch
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 JSON = os.path.join(REPO, "results", "timing_sidechannel.json")
 FIG = os.path.join(REPO, "results", "figures", "timing_sidechannel.png")
-INK, MUTED, GRID = "#222222", "#666666", "#dddddd"
+
+XRAY, DEGEN, CIFAR, MODEL = "#0072B2", "#999999", "#D55E00", "#333333"
+INK, MUTED, GRID = "#222222", "#666666", "#e2e2e2"
 plt.rcParams.update({
     "figure.facecolor": "white", "axes.facecolor": "white", "axes.edgecolor": MUTED,
-    "axes.labelcolor": INK, "text.color": INK, "xtick.color": MUTED, "ytick.color": MUTED,
-    "axes.titlecolor": INK, "font.size": 10, "axes.grid": True, "grid.color": GRID,
-    "grid.linewidth": 0.7, "axes.axisbelow": True, "figure.dpi": 120, "savefig.bbox": "tight",
+    "axes.labelcolor": INK, "text.color": INK, "xtick.color": MUTED, "ytick.color": INK,
+    "axes.titlecolor": INK, "font.size": 11, "axes.grid": True, "grid.color": GRID,
+    "grid.linewidth": 0.8, "axes.axisbelow": True, "figure.dpi": 120, "savefig.bbox": "tight",
 })
 
 
 def main():
     d = json.load(open(JSON))
     cl = d["content_leak"]
-    fig, (axL, axR) = plt.subplots(1, 2, figsize=(15, 5),
-                                   gridspec_kw={"width_ratios": [2.4, 1]})
-
-    # LEFT — per-category latency: pathologies (blue), degenerate inputs (grey),
-    # real natural images from CIFAR (orange). If content leaked, they'd separate.
     pc = cl["per_category"]
+    gm = cl["grand_mean_ms"]
+
     path = sorted(c for c in pc if not c.startswith(("_", "~")))
     degen = [c for c in pc if c.startswith("_")]
     cifar = [c for c in pc if c.startswith("~")]
-    order = path + degen + cifar
+    order = path + degen + cifar                       # bottom-to-top after we flip
+    order = order[::-1]
 
-    def _lab(c):
-        if c.startswith("_"):
-            return c[1:] + "\n(unrelated)"
-        if c.startswith("~"):
-            return c[1:] + "\n(CIFAR)"
-        return c
-    labels = [_lab(c) for c in order]
-    means = [pc[c]["mean_ms"] for c in order]
-    stds = [pc[c]["std_ms"] for c in order]
-    colors = (["#0072B2"] * len(path) + ["#999999"] * len(degen) + ["#D55E00"] * len(cifar))
-    x = np.arange(len(order))
-    axL.bar(x, means, yerr=stds, color=colors, capsize=3, error_kw={"ecolor": MUTED, "lw": 1})
-    from matplotlib.patches import Patch
-    axL.legend(handles=[Patch(color="#0072B2", label="chest X-ray (by pathology)"),
-                        Patch(color="#999999", label="degenerate (noise/black/white)"),
-                        Patch(color="#D55E00", label="CIFAR natural images (car/cat/ship)")],
-               loc="upper right", fontsize=8, framealpha=0.95)
-    gm = cl["grand_mean_ms"]
-    axL.axhline(gm, color=INK, ls="--", lw=1)
-    axL.set_xticks(x); axL.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
-    axL.set_ylabel("batch-1 latency (ms)")
-    lo = min(means) - max(stds) * 1.5
-    axL.set_ylim(max(0, lo - 1), max(means) + max(stds) * 1.5 + 1)   # zoom in on the spread
-    axL.set_title(f"CONTENT does NOT leak — every category (blue) and every unrelated input "
-                  f"(grey)\nlands within {cl['spread_pct_of_mean']}% of the mean "
-                  f"({cl['spread_across_categories_ms']} ms spread, Kruskal-Wallis "
-                  f"p={cl['kruskal_wallis']['p']:.2g})", fontsize=10)
-    axL.grid(axis="x", visible=False)
+    def lab(c):
+        return (c[1:] + "  (noise/black/white)" if c.startswith("_") else
+                c[1:] + "  (CIFAR photo)" if c.startswith("~") else c)
 
-    # RIGHT — the positive control
+    def col(c):
+        return DEGEN if c.startswith("_") else CIFAR if c.startswith("~") else XRAY
+
+    fig = plt.figure(figsize=(15, 7.2))
+    gs = fig.add_gridspec(1, 2, width_ratios=[2.3, 1], wspace=0.32)
+    axL = fig.add_subplot(gs[0]); axR = fig.add_subplot(gs[1])
+
+    # -------- LEFT: content — a tight vertical line = no leak
+    y = np.arange(len(order))
+    means = np.array([pc[c]["mean_ms"] for c in order])
+    stds = np.array([pc[c]["std_ms"] for c in order])
+    axL.axvspan(means.min(), means.max(), color="#0072B2", alpha=0.07, zorder=0)
+    axL.axvline(gm, color=INK, ls="--", lw=1.2, zorder=1)
+    for yi, c, m, s in zip(y, order, means, stds):
+        axL.errorbar(m, yi, xerr=s, fmt="o", ms=7, color=col(c), ecolor=MUTED,
+                     elinewidth=1.4, capsize=3, zorder=3)
+    axL.set_yticks(y); axL.set_yticklabels([lab(c) for c in order], fontsize=9)
+    axL.set_xlim(gm - 1.0, gm + 1.0)
+    axL.set_xlabel("per-inference latency (ms)  ·  batch 1")
+    axL.set_title("What's IN the image doesn't leak\n"
+                  f"every input lands within {cl['spread_across_categories_ms']:.3f} ms "
+                  f"({cl['spread_pct_of_mean']}% of the mean)", fontsize=12)
+    axL.legend(handles=[Patch(color=XRAY, label="chest X-ray (15 pathologies)"),
+                        Patch(color=DEGEN, label="degenerate (noise / black / white)"),
+                        Patch(color=CIFAR, label="CIFAR photo (car / cat / ship)")],
+               loc="lower right", fontsize=9, framealpha=0.95)
+    axL.grid(axis="y", visible=False)
+    axL.annotate(f"grand mean {gm:.2f} ms", xy=(gm, len(order) - 0.5),
+                 xytext=(gm + 0.12, len(order) - 0.6), fontsize=8.5, color=MUTED)
+
+    # -------- RIGHT: model / resolution — clearly separated = the real leak
     ctrl = d["shape_model_control"]
-    cx = np.arange(len(ctrl))
-    cm = [v["mean_ms"] for v in ctrl.values()]
-    cs = [v["std_ms"] for v in ctrl.values()]
-    bars = axR.bar(cx, cm, yerr=cs, color=["#D55E00", "#E69F00", "#009E73"], capsize=3,
-                   error_kw={"ecolor": MUTED, "lw": 1})
+    names = list(ctrl); cm = [ctrl[n]["mean_ms"] for n in names]
+    cs = [ctrl[n]["std_ms"] for n in names]
+    yy = np.arange(len(names))[::-1]
+    bars = axR.barh(yy, cm, xerr=cs, color=[MODEL, "#8a8a8a", "#D55E00"], height=0.6,
+                    error_kw={"ecolor": MUTED, "lw": 1.2}, zorder=3)
     for b, m in zip(bars, cm):
-        axR.text(b.get_x() + b.get_width() / 2, m + 1, f"{m:.0f}", ha="center", fontsize=9)
-    axR.set_xticks(cx); axR.set_xticklabels(list(ctrl.keys()), rotation=20, ha="right",
-                                            fontsize=8)
-    axR.set_ylabel("batch-1 latency (ms)")
-    axR.set_title("MODEL / SHAPE does leak\n(what actually is observable)", fontsize=10)
-    axR.grid(axis="x", visible=False)
+        axR.text(m + 1.2, b.get_y() + b.get_height() / 2, f"{m:.0f} ms", va="center",
+                 fontsize=10, fontweight="bold")
+    axR.set_yticks(yy); axR.set_yticklabels(names, fontsize=9)
+    axR.set_xlim(0, 60); axR.set_xlabel("per-inference latency (ms)")
+    axR.set_title("Which MODEL / resolution ran DOES leak\n(a clean 2× gap)", fontsize=12)
+    axR.grid(axis="y", visible=False)
 
-    fig.suptitle("XP15 — is your inference time leaking the input? (Jetson Orin Nano, "
-                 "DenseNet-121, batch 1)", fontsize=12, y=1.02)
-    fig.text(0.5, -0.03, "Left y-axis is zoomed to the spread: the per-category bars are "
-             "indistinguishable. The image CONTENT is invisible to a timing attacker; the "
-             "MODEL and INPUT SIZE are not.", ha="center", fontsize=8.5, color=MUTED)
+    fig.suptitle("XP15 — is your inference time leaking the input?  "
+                 "(Jetson Orin Nano, DenseNet-121)", fontsize=13, y=1.01, fontweight="bold")
     os.makedirs(os.path.dirname(FIG), exist_ok=True)
-    fig.savefig(FIG, dpi=130)
+    fig.savefig(FIG, dpi=140)
     print(f"wrote {os.path.relpath(FIG, REPO)}")
 
 
