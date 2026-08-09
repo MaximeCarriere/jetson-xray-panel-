@@ -1,0 +1,219 @@
+{
+  "experiment": "xp15_timing_sidechannel",
+  "device": "Orin",
+  "power_mode": "2",
+  "model": "densenet121-res224-nih (FP16 autocast, batch 1)",
+  "per_category_images": 100,
+  "timing_repeats": 10,
+  "content_leak": {
+    "per_category": {
+      "no_finding": {
+        "mean_ms": 49.7043,
+        "std_ms": 0.4308,
+        "p50_ms": 49.6222,
+        "p95_ms": 50.6219,
+        "n": 1000
+      },
+      "atelectasis": {
+        "mean_ms": 49.6813,
+        "std_ms": 0.3247,
+        "p50_ms": 49.6347,
+        "p95_ms": 49.8594,
+        "n": 1000
+      },
+      "cardiomegaly": {
+        "mean_ms": 49.638,
+        "std_ms": 0.1785,
+        "p50_ms": 49.6332,
+        "p95_ms": 49.8219,
+        "n": 1000
+      },
+      "effusion": {
+        "mean_ms": 49.6366,
+        "std_ms": 0.2363,
+        "p50_ms": 49.617,
+        "p95_ms": 49.8062,
+        "n": 1000
+      },
+      "infiltration": {
+        "mean_ms": 49.6966,
+        "std_ms": 0.4006,
+        "p50_ms": 49.628,
+        "p95_ms": 50.1622,
+        "n": 1000
+      },
+      "mass": {
+        "mean_ms": 49.6829,
+        "std_ms": 0.3461,
+        "p50_ms": 49.6321,
+        "p95_ms": 49.9913,
+        "n": 1000
+      },
+      "nodule": {
+        "mean_ms": 49.6186,
+        "std_ms": 0.1198,
+        "p50_ms": 49.6213,
+        "p95_ms": 49.7938,
+        "n": 1000
+      },
+      "pneumonia": {
+        "mean_ms": 49.653,
+        "std_ms": 0.2373,
+        "p50_ms": 49.6312,
+        "p95_ms": 49.8213,
+        "n": 590
+      },
+      "pneumothorax": {
+        "mean_ms": 49.6715,
+        "std_ms": 0.265,
+        "p50_ms": 49.6371,
+        "p95_ms": 49.8541,
+        "n": 1000
+      },
+      "consolidation": {
+        "mean_ms": 49.6467,
+        "std_ms": 0.2791,
+        "p50_ms": 49.6056,
+        "p95_ms": 49.8423,
+        "n": 1000
+      },
+      "edema": {
+        "mean_ms": 49.676,
+        "std_ms": 0.3454,
+        "p50_ms": 49.6271,
+        "p95_ms": 49.8597,
+        "n": 1000
+      },
+      "emphysema": {
+        "mean_ms": 49.6357,
+        "std_ms": 0.187,
+        "p50_ms": 49.6231,
+        "p95_ms": 49.8074,
+        "n": 1000
+      },
+      "fibrosis": {
+        "mean_ms": 49.7067,
+        "std_ms": 0.3904,
+        "p50_ms": 49.6305,
+        "p95_ms": 50.4473,
+        "n": 1000
+      },
+      "pleural": {
+        "mean_ms": 49.6648,
+        "std_ms": 0.2886,
+        "p50_ms": 49.6252,
+        "p95_ms": 49.8655,
+        "n": 1000
+      },
+      "hernia": {
+        "mean_ms": 49.7059,
+        "std_ms": 0.3507,
+        "p50_ms": 49.6251,
+        "p95_ms": 49.9709,
+        "n": 210
+      },
+      "_noise": {
+        "mean_ms": 49.6676,
+        "std_ms": 0.2198,
+        "p50_ms": 49.6321,
+        "p95_ms": 49.8457,
+        "n": 1000
+      },
+      "_black": {
+        "mean_ms": 49.6374,
+        "std_ms": 0.1714,
+        "p50_ms": 49.6287,
+        "p95_ms": 49.8168,
+        "n": 1000
+      },
+      "_white": {
+        "mean_ms": 49.6789,
+        "std_ms": 0.2884,
+        "p50_ms": 49.6361,
+        "p95_ms": 49.862,
+        "n": 1000
+      }
+    },
+    "grand_mean_ms": 49.6662,
+    "spread_across_categories_ms": 0.0881,
+    "spread_pct_of_mean": 0.177,
+    "kruskal_wallis": {
+      "H": 67.386,
+      "p": 5.718787980029275e-09,
+      "note": "tests if the per-category latency distributions differ"
+    }
+  },
+  "shape_model_control": {
+    "densenet-nih @224": {
+      "mean_ms": 49.8528,
+      "std_ms": 0.2531,
+      "p50_ms": 49.8411,
+      "p95_ms": 50.0154,
+      "n": 1000,
+      "input": "224x224",
+      "weights": "densenet121-res224-nih"
+    },
+    "densenet-chex @224": {
+      "mean_ms": 49.5626,
+      "std_ms": 0.2793,
+      "p50_ms": 49.5261,
+      "p95_ms": 49.8483,
+      "n": 1000,
+      "input": "224x224",
+      "weights": "densenet121-res224-chex"
+    },
+    "resnet50 @512": {
+      "mean_ms": 24.1235,
+      "std_ms": 0.1211,
+      "p50_ms": 24.1169,
+      "p95_ms": 24.1872,
+      "n": 1000,
+      "input": "512x512",
+      "weights": "resnet50-res512-all"
+    }
+  },
+  "energy_per_category": {
+    "infiltration": {
+      "inferences": 61,
+      "seconds": 3.01,
+      "power_w_mean": 8.412,
+      "energy_j_total": 24.881,
+      "energy_mj_per_inference": 407.8932
+    },
+    "cardiomegaly": {
+      "inferences": 61,
+      "seconds": 3.01,
+      "power_w_mean": 8.319,
+      "energy_j_total": 24.623,
+      "energy_mj_per_inference": 403.656
+    },
+    "atelectasis": {
+      "inferences": 61,
+      "seconds": 3.02,
+      "power_w_mean": 8.348,
+      "energy_j_total": 24.732,
+      "energy_mj_per_inference": 405.4355
+    },
+    "no_finding": {
+      "inferences": 61,
+      "seconds": 3.01,
+      "power_w_mean": 8.334,
+      "energy_j_total": 24.667,
+      "energy_mj_per_inference": 404.37
+    },
+    "mass": {
+      "inferences": 61,
+      "seconds": 3.01,
+      "power_w_mean": 8.318,
+      "energy_j_total": 24.624,
+      "energy_mj_per_inference": 403.6729
+    },
+    "effusion": {
+      "inferences": 61,
+      "seconds": 3.01,
+      "power_w_mean": 8.309,
+      "energy_j_total": 24.587,
+      "energy_mj_per_inference": 403.0728
+    }
+  }
+}
