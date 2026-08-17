@@ -1,0 +1,58 @@
+{
+  "batch_size": 8,
+  "n_batches": 50,
+  "repeats": 3,
+  "n_eval_images": 2000,
+  "weights": "densenet121-res224-nih",
+  "engine": "/home/a/densenet_nih_fp16.engine",
+  "device": "Orin",
+  "throughput": {
+    "torch_fp32": {
+      "mean_ips": 139.2,
+      "se_ips": 0.2,
+      "runs": [
+        138.9,
+        139.3,
+        139.3
+      ]
+    },
+    "torch_fp16_autocast": {
+      "mean_ips": 169.5,
+      "se_ips": 0.1,
+      "runs": [
+        169.4,
+        169.5,
+        169.6
+      ]
+    },
+    "torch_fp16_half": {
+      "mean_ips": 184.5,
+      "se_ips": 0.0,
+      "runs": [
+        184.5,
+        184.5,
+        184.5
+      ]
+    },
+    "trt_fp16": {
+      "mean_ips": 499.1,
+      "se_ips": 0.9,
+      "runs": [
+        500.0,
+        500.1,
+        497.4
+      ]
+    }
+  },
+  "accuracy": {
+    "torch_fp16_half": {
+      "auroc": 0.5006,
+      "se": 0.0118
+    },
+    "trt_fp16": {
+      "auroc": 0.7405,
+      "se": 0.0134
+    }
+  },
+  "compilation_speedup_fp16_matched": 2.71
+}
